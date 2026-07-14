@@ -62,6 +62,16 @@
 }
 
 :root {
+  /* Math Fighting Dojo palette — bright, friendly, kid-safe */
+  --dojo-bg: oklch(0.97 0.03 90);
+  --dojo-primary: oklch(0.55 0.18 250);
+  --dojo-primary-foreground: oklch(0.99 0 0);
+  --dojo-secondary: oklch(0.93 0.06 90);
+  --dojo-secondary-foreground: oklch(0.3 0.1 260);
+  --dojo-accent: oklch(0.78 0.17 70);
+  --dojo-accent-foreground: oklch(0.2 0.05 260);
+  --dojo-danger: oklch(0.62 0.22 25);
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
