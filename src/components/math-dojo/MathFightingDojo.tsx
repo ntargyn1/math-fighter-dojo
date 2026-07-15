@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type Screen = "home" | "battle" | "training" | "victory" | "defeat";
+type Screen =
+  | "home"
+  | "battle"
+  | "training"
+  | "victory"
+  | "defeat"
+  | "two-player"
+  | "two-player-result"
+  | "settings";
 type Operator = "+" | "-";
+type PlayerId = "player1" | "player2";
 
 interface Question {
   a: number;
@@ -17,6 +26,11 @@ const SMALL_DAMAGE = 15;
 const NPC_DAMAGE = 10;
 const START_NPC_HEALTH = 300;
 const START_PLAYER_HEALTH = 100;
+
+// Two-player tuning
+const TP_START_HEALTH = 100;
+const TP_COUNTER_DAMAGE = 15;
+const TP_STRIKE_DAMAGE = 20;
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -60,7 +74,6 @@ function generateOptions(correct: number): number[] {
     if (candidate >= 0 && candidate !== correct) set.add(candidate);
   }
   const arr = Array.from(set);
-  // shuffle
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -69,15 +82,17 @@ function generateOptions(correct: number): number[] {
 }
 
 // ---------- Placeholder animation hooks ----------
-function playHitAnimation(target: "npc" | "player") {
-  // Placeholder for future visual improvements
+function playHitAnimation(target: string) {
   console.log(`hit anim on ${target}`);
+}
+function playBlockAnimation(target: string) {
+  console.log(`block anim on ${target}`);
 }
 function playUltimateAnimation() {
   console.log("ULTIMATE!");
 }
 
-// ---------- Components ----------
+// ---------- Shared UI ----------
 
 function HealthBar({
   value,
@@ -109,35 +124,39 @@ function HealthBar({
   );
 }
 
-function Stickman({ pose, flipped }: { pose: "idle" | "hit" | "attack"; flipped?: boolean }) {
+function Stickman({
+  pose,
+  flipped,
+}: {
+  pose: "idle" | "hit" | "attack" | "block";
+  flipped?: boolean;
+}) {
   const color = "currentColor";
-  const armAngle = pose === "attack" ? -40 : pose === "hit" ? 20 : 0;
+  const armAngle = pose === "attack" ? -40 : pose === "hit" ? 20 : pose === "block" ? -10 : 0;
   return (
     <svg
       viewBox="0 0 100 140"
-      className={`h-32 w-24 ${pose === "hit" ? "animate-pulse" : ""}`}
+      className={`h-28 w-20 ${pose === "hit" ? "animate-pulse" : ""}`}
       style={{ transform: flipped ? "scaleX(-1)" : undefined }}
     >
       <circle cx="50" cy="20" r="14" stroke={color} strokeWidth="4" fill="none" />
       <line x1="50" y1="34" x2="50" y2="80" stroke={color} strokeWidth="4" />
-      <line
-        x1="50"
-        y1="50"
-        x2={50 - 25}
-        y2={50 + armAngle}
-        stroke={color}
-        strokeWidth="4"
-      />
-      <line
-        x1="50"
-        y1="50"
-        x2={50 + 25}
-        y2={50 + armAngle}
-        stroke={color}
-        strokeWidth="4"
-      />
+      <line x1="50" y1="50" x2={50 - 25} y2={50 + armAngle} stroke={color} strokeWidth="4" />
+      <line x1="50" y1="50" x2={50 + 25} y2={50 + armAngle} stroke={color} strokeWidth="4" />
       <line x1="50" y1="80" x2="30" y2="120" stroke={color} strokeWidth="4" />
       <line x1="50" y1="80" x2="70" y2="120" stroke={color} strokeWidth="4" />
+      {pose === "block" && (
+        <rect
+          x="20"
+          y="45"
+          width="12"
+          height="30"
+          rx="2"
+          stroke={color}
+          strokeWidth="3"
+          fill="none"
+        />
+      )}
     </svg>
   );
 }
@@ -166,15 +185,18 @@ function BigButton({
 }: {
   children: React.ReactNode;
   onClick?: () => void;
-  variant?: "primary" | "secondary" | "answer";
+  variant?: "primary" | "secondary" | "answer" | "p1" | "p2";
   disabled?: boolean;
 }) {
   const base =
     "w-full rounded-2xl px-6 py-5 text-2xl font-black shadow-lg active:scale-95 transition-transform disabled:opacity-60 disabled:active:scale-100";
   const styles: Record<string, string> = {
     primary: "bg-[var(--dojo-primary)] text-[var(--dojo-primary-foreground)]",
-    secondary: "bg-[var(--dojo-secondary)] text-[var(--dojo-secondary-foreground)] border-4 border-[var(--dojo-primary)]",
+    secondary:
+      "bg-[var(--dojo-secondary)] text-[var(--dojo-secondary-foreground)] border-4 border-[var(--dojo-primary)]",
     answer: "bg-[var(--dojo-accent)] text-[var(--dojo-accent-foreground)]",
+    p1: "bg-sky-500 text-white",
+    p2: "bg-pink-500 text-white",
   };
   return (
     <button
@@ -188,16 +210,81 @@ function BigButton({
   );
 }
 
+function QuestionCard({
+  question,
+  options,
+  timeRemaining,
+  timerColor,
+  onAnswer,
+  disabled,
+  answerVariant = "answer",
+  headerText,
+  flash,
+}: {
+  question: Question;
+  options: number[];
+  timeRemaining: number;
+  timerColor: string;
+  onAnswer: (v: number) => void;
+  disabled?: boolean;
+  answerVariant?: "answer" | "p1" | "p2";
+  headerText?: string;
+  flash?: string | null;
+}) {
+  const timerPct = (timeRemaining / QUESTION_TIME) * 100;
+  return (
+    <div className="relative flex w-full flex-col items-center gap-3 rounded-3xl bg-white/70 p-4 shadow-inner">
+      {flash && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-[var(--dojo-accent)]/90 px-2 text-center text-2xl font-black text-[var(--dojo-accent-foreground)]">
+          {flash}
+        </div>
+      )}
+      <div className="w-full">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full transition-all"
+            style={{ width: `${timerPct}%`, backgroundColor: timerColor }}
+          />
+        </div>
+        <div className="mt-1 text-center text-xs font-bold text-foreground/70">
+          {timeRemaining.toFixed(1)}s{headerText ? ` • ${headerText}` : ""}
+        </div>
+      </div>
+      <div className="text-4xl font-black text-[var(--dojo-primary)]">
+        {question.a} {question.operator} {question.b} = ?
+      </div>
+      <div className="flex w-full flex-col gap-2">
+        {options.map((opt) => (
+          <BigButton
+            key={opt}
+            variant={answerVariant}
+            onClick={() => onAnswer(opt)}
+            disabled={disabled}
+          >
+            {opt}
+          </BigButton>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Home ----------
+
 function HomeScreen({
   onPlay,
+  onTwoPlayer,
   onTrain,
+  onSettings,
 }: {
   onPlay: () => void;
+  onTwoPlayer: () => void;
   onTrain: () => void;
+  onSettings: () => void;
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-between bg-[var(--dojo-bg)] px-6 py-10">
-      <div className="flex flex-col items-center gap-2 pt-8">
+    <div className="flex min-h-screen flex-col items-center justify-between bg-[var(--dojo-bg)] px-6 py-8">
+      <div className="flex flex-col items-center gap-2 pt-4">
         <div className="text-5xl">🥋</div>
         <h1 className="text-center text-4xl font-black leading-tight text-[var(--dojo-primary)]">
           Math Fighting
@@ -209,23 +296,31 @@ function HomeScreen({
         </p>
       </div>
 
-      <div className="flex w-full justify-center gap-6 py-8 text-[var(--dojo-primary)]">
+      <div className="flex w-full justify-center gap-6 py-4 text-[var(--dojo-primary)]">
         <Stickman pose="idle" />
         <div className="self-center text-4xl">⚔️</div>
         <Stickman pose="idle" flipped />
       </div>
 
-      <div className="flex w-full max-w-sm flex-col gap-4">
+      <div className="flex w-full max-w-sm flex-col gap-3">
         <BigButton onClick={onPlay} variant="primary">
-          ▶ Play Battle
+          ▶ Single Battle
+        </BigButton>
+        <BigButton onClick={onTwoPlayer} variant="p2">
+          👥 Two Players
         </BigButton>
         <BigButton onClick={onTrain} variant="secondary">
           🧠 Training
+        </BigButton>
+        <BigButton onClick={onSettings} variant="secondary">
+          ⚙️ Settings
         </BigButton>
       </div>
     </div>
   );
 }
+
+// ---------- Single Battle ----------
 
 function BattleScreen({
   level,
@@ -248,8 +343,8 @@ function BattleScreen({
     generateOptions(currentQuestion.correctAnswer),
   );
   const [timeRemaining, setTimeRemaining] = useState(QUESTION_TIME);
-  const [playerPose, setPlayerPose] = useState<"idle" | "hit" | "attack">("idle");
-  const [npcPose, setNpcPose] = useState<"idle" | "hit" | "attack">("idle");
+  const [playerPose, setPlayerPose] = useState<"idle" | "hit" | "attack" | "block">("idle");
+  const [npcPose, setNpcPose] = useState<"idle" | "hit" | "attack" | "block">("idle");
   const [flash, setFlash] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
 
@@ -266,7 +361,6 @@ function BattleScreen({
     setNpcPose("idle");
   }, [level]);
 
-  // countdown timer
   useEffect(() => {
     if (locked) return;
     const id = setInterval(() => {
@@ -275,7 +369,6 @@ function BattleScreen({
       if (remaining <= 0) {
         setTimeRemaining(0);
         setLocked(true);
-        // timeout = npc hits player
         setPlayerHealth((h) => h - NPC_DAMAGE);
         setComboCount(0);
         setNpcPose("attack");
@@ -293,7 +386,6 @@ function BattleScreen({
     return () => clearInterval(id);
   }, [locked, nextQuestion]);
 
-  // check win/lose
   useEffect(() => {
     if (npcHealth <= 0) {
       setTimeout(onVictory, 500);
@@ -315,7 +407,6 @@ function BattleScreen({
       playHitAnimation("npc");
 
       if (newCombo >= 3) {
-        // ULTIMATE
         playUltimateAnimation();
         setFlash("⚡ ULTIMATE STRIKE! ⚡");
         setNpcHealth((h) => h - 150);
@@ -347,11 +438,8 @@ function BattleScreen({
     }, 900);
   };
 
-  const timerPct = (timeRemaining / QUESTION_TIME) * 100;
-
   return (
     <div className="flex min-h-screen flex-col bg-[var(--dojo-bg)] px-4 py-4">
-      {/* NPC */}
       <div className="flex flex-col items-center gap-2">
         <HealthBar
           value={npcHealth}
@@ -364,39 +452,19 @@ function BattleScreen({
         </div>
       </div>
 
-      {/* Center: question + timer + answers */}
-      <div className="relative my-4 flex flex-1 flex-col items-center justify-center gap-4 rounded-3xl bg-white/70 p-4 shadow-inner">
-        {flash && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-[var(--dojo-accent)]/90 text-3xl font-black text-[var(--dojo-accent-foreground)]">
-            {flash}
-          </div>
-        )}
-        <div className="w-full">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full bg-[var(--dojo-primary)] transition-all"
-              style={{ width: `${timerPct}%` }}
-            />
-          </div>
-          <div className="mt-1 text-center text-xs font-bold text-foreground/70">
-            {timeRemaining.toFixed(1)}s • Level {level}
-          </div>
-        </div>
-
-        <div className="text-5xl font-black text-[var(--dojo-primary)]">
-          {currentQuestion.a} {currentQuestion.operator} {currentQuestion.b} = ?
-        </div>
-
-        <div className="flex w-full flex-col gap-3">
-          {answerOptions.map((opt) => (
-            <BigButton key={opt} variant="answer" onClick={() => handleAnswer(opt)} disabled={locked}>
-              {opt}
-            </BigButton>
-          ))}
-        </div>
+      <div className="my-4 flex flex-1 flex-col items-center justify-center">
+        <QuestionCard
+          question={currentQuestion}
+          options={answerOptions}
+          timeRemaining={timeRemaining}
+          timerColor="var(--dojo-primary)"
+          onAnswer={handleAnswer}
+          disabled={locked}
+          headerText={`Level ${level}`}
+          flash={flash}
+        />
       </div>
 
-      {/* Player */}
       <div className="flex flex-col items-center gap-2">
         <div className="text-[var(--dojo-primary)]">
           <Stickman pose={playerPose} flipped />
@@ -419,6 +487,178 @@ function BattleScreen({
     </div>
   );
 }
+
+// ---------- Two Player Battle ----------
+
+function TwoPlayerBattleScreen({
+  level,
+  onFinish,
+  onHome,
+}: {
+  level: number;
+  onFinish: (winner: PlayerId) => void;
+  onHome: () => void;
+}) {
+  const [p1Health, setP1Health] = useState(TP_START_HEALTH);
+  const [p2Health, setP2Health] = useState(TP_START_HEALTH);
+  const [currentTurn, setCurrentTurn] = useState<PlayerId>("player1");
+  const [currentQuestion, setCurrentQuestion] = useState<Question>(() =>
+    generateQuestion(level),
+  );
+  const [answerOptions, setAnswerOptions] = useState<number[]>(() =>
+    generateOptions(currentQuestion.correctAnswer),
+  );
+  const [timeRemaining, setTimeRemaining] = useState(QUESTION_TIME);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
+  const questionStartRef = useRef<number>(Date.now());
+
+  const nextTurn = useCallback(() => {
+    setCurrentTurn((t) => (t === "player1" ? "player2" : "player1"));
+    const q = generateQuestion(level);
+    setCurrentQuestion(q);
+    setAnswerOptions(generateOptions(q.correctAnswer));
+    setTimeRemaining(QUESTION_TIME);
+    questionStartRef.current = Date.now();
+    setLocked(false);
+  }, [level]);
+
+  useEffect(() => {
+    if (locked) return;
+    const id = setInterval(() => {
+      const elapsed = (Date.now() - questionStartRef.current) / 1000;
+      const remaining = QUESTION_TIME - elapsed;
+      if (remaining <= 0) {
+        setTimeRemaining(0);
+        setLocked(true);
+        // failed to block -> takes damage
+        if (currentTurn === "player1") {
+          setP1Health((h) => h - TP_STRIKE_DAMAGE);
+        } else {
+          setP2Health((h) => h - TP_STRIKE_DAMAGE);
+        }
+        playHitAnimation(currentTurn);
+        setFlash("Too slow! Took a hit!");
+        setTimeout(() => {
+          setFlash(null);
+          nextTurn();
+        }, 1000);
+      } else {
+        setTimeRemaining(remaining);
+      }
+    }, 100);
+    return () => clearInterval(id);
+  }, [locked, nextTurn, currentTurn]);
+
+  useEffect(() => {
+    if (p1Health <= 0) setTimeout(() => onFinish("player2"), 400);
+    else if (p2Health <= 0) setTimeout(() => onFinish("player1"), 400);
+  }, [p1Health, p2Health, onFinish]);
+
+  const handleAnswer = (value: number) => {
+    if (locked) return;
+    setLocked(true);
+    const elapsed = (Date.now() - questionStartRef.current) / 1000;
+    const isCorrect = value === currentQuestion.correctAnswer;
+    const attacker = currentTurn;
+    const defender: PlayerId = attacker === "player1" ? "player2" : "player1";
+
+    if (isCorrect && elapsed <= FAST_ANSWER_THRESHOLD) {
+      playBlockAnimation(attacker);
+      playHitAnimation(defender);
+      setFlash(`Blocked + Counter! -${TP_COUNTER_DAMAGE}`);
+      if (defender === "player1") setP1Health((h) => h - TP_COUNTER_DAMAGE);
+      else setP2Health((h) => h - TP_COUNTER_DAMAGE);
+    } else if (isCorrect) {
+      playBlockAnimation(attacker);
+      setFlash("Blocked!");
+    } else {
+      playHitAnimation(attacker);
+      setFlash(`Hit! -${TP_STRIKE_DAMAGE}`);
+      if (attacker === "player1") setP1Health((h) => h - TP_STRIKE_DAMAGE);
+      else setP2Health((h) => h - TP_STRIKE_DAMAGE);
+    }
+
+    setTimeout(() => {
+      setFlash(null);
+      nextTurn();
+    }, 1000);
+  };
+
+  const isP1Turn = currentTurn === "player1";
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[var(--dojo-bg)]">
+      {/* Player 2 (top, rotated feel via label) */}
+      <div
+        className={`flex flex-col items-center gap-2 border-b-4 p-3 ${
+          !isP1Turn ? "border-pink-500 bg-pink-50" : "border-transparent"
+        }`}
+      >
+        <HealthBar
+          value={p2Health}
+          max={TP_START_HEALTH}
+          color="#ec4899"
+          label="🌸 Player 2"
+        />
+        <div className="text-pink-500">
+          <Stickman pose="idle" />
+        </div>
+        {!isP1Turn && (
+          <div className="rounded-full bg-pink-500 px-4 py-1 text-sm font-black text-white">
+            PLAYER 2 — YOUR TURN
+          </div>
+        )}
+      </div>
+
+      {/* Center question — belongs to active player */}
+      <div className="flex flex-1 items-center justify-center px-4 py-3">
+        <QuestionCard
+          question={currentQuestion}
+          options={answerOptions}
+          timeRemaining={timeRemaining}
+          timerColor={isP1Turn ? "#0ea5e9" : "#ec4899"}
+          onAnswer={handleAnswer}
+          disabled={locked}
+          answerVariant={isP1Turn ? "p1" : "p2"}
+          headerText={isP1Turn ? "Player 1 defends" : "Player 2 defends"}
+          flash={flash}
+        />
+      </div>
+
+      {/* Player 1 (bottom) */}
+      <div
+        className={`flex flex-col items-center gap-2 border-t-4 p-3 ${
+          isP1Turn ? "border-sky-500 bg-sky-50" : "border-transparent"
+        }`}
+      >
+        {isP1Turn && (
+          <div className="rounded-full bg-sky-500 px-4 py-1 text-sm font-black text-white">
+            PLAYER 1 — YOUR TURN
+          </div>
+        )}
+        <div className="text-sky-500">
+          <Stickman pose="idle" flipped />
+        </div>
+        <HealthBar
+          value={p1Health}
+          max={TP_START_HEALTH}
+          color="#0ea5e9"
+          label="🌊 Player 1"
+        />
+        <button
+          type="button"
+          onClick={onHome}
+          className="text-sm font-bold text-foreground/60 underline"
+        >
+          Back to home
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Training ----------
 
 function TrainingScreen({ onHome }: { onHome: () => void }) {
   const [level, setLevel] = useState(1);
@@ -463,7 +703,7 @@ function TrainingScreen({ onHome }: { onHome: () => void }) {
       <h2 className="text-3xl font-black text-[var(--dojo-primary)]">Training</h2>
       <p className="mt-1 text-sm text-foreground/70">Calm practice. No fighting.</p>
 
-      <div className="mt-8 w-full max-w-sm rounded-3xl bg-white/70 p-6 shadow-inner">
+      <div className="mt-6 w-full max-w-sm rounded-3xl bg-white/70 p-6 shadow-inner">
         <div className="text-center text-5xl font-black text-[var(--dojo-primary)]">
           {question.a} {question.operator} {question.b} = ?
         </div>
@@ -492,6 +732,8 @@ function TrainingScreen({ onHome }: { onHome: () => void }) {
     </div>
   );
 }
+
+// ---------- Result screens ----------
 
 function ResultScreen({
   kind,
@@ -526,20 +768,115 @@ function ResultScreen({
   );
 }
 
+function TwoPlayerResultScreen({
+  winner,
+  onRetry,
+  onHome,
+}: {
+  winner: PlayerId;
+  onRetry: () => void;
+  onHome: () => void;
+}) {
+  const isP1 = winner === "player1";
+  return (
+    <div
+      className={`flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-10 ${
+        isP1 ? "bg-sky-100" : "bg-pink-100"
+      }`}
+    >
+      <div className="text-7xl">🏆</div>
+      <h2
+        className={`text-center text-4xl font-black ${isP1 ? "text-sky-600" : "text-pink-600"}`}
+      >
+        {isP1 ? "Player 1 Wins!" : "Player 2 Wins!"}
+      </h2>
+      <div className="flex w-full max-w-sm flex-col gap-3">
+        <BigButton variant={isP1 ? "p1" : "p2"} onClick={onRetry}>
+          Play again
+        </BigButton>
+        <BigButton variant="secondary" onClick={onHome}>
+          Back to home
+        </BigButton>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Settings ----------
+
+function SettingsScreen({
+  level,
+  setLevel,
+  onHome,
+}: {
+  level: number;
+  setLevel: (n: number) => void;
+  onHome: () => void;
+}) {
+  return (
+    <div className="flex min-h-screen flex-col items-center bg-[var(--dojo-bg)] px-6 py-8">
+      <h2 className="text-3xl font-black text-[var(--dojo-primary)]">Settings</h2>
+      <p className="mt-1 text-sm text-foreground/70">Pick a starting level.</p>
+
+      <div className="mt-6 w-full max-w-sm rounded-3xl bg-white/70 p-6 shadow-inner">
+        <div className="text-center text-2xl font-black text-[var(--dojo-primary)]">
+          Level {level}
+        </div>
+        <input
+          type="range"
+          min={1}
+          max={20}
+          value={level}
+          onChange={(e) => setLevel(Number(e.target.value))}
+          className="mt-4 w-full"
+        />
+        <div className="mt-2 flex justify-between text-xs font-bold text-foreground/60">
+          <span>1</span>
+          <span>20</span>
+        </div>
+        <div className="mt-4 text-center text-sm text-foreground/70">
+          {level <= 5 && "Addition 0–10"}
+          {level > 5 && level <= 10 && "Addition 0–20"}
+          {level > 10 && level <= 15 && "Subtraction 0–10"}
+          {level > 15 && "Mixed +/− 0–20"}
+        </div>
+      </div>
+
+      <div className="mt-6 w-full max-w-sm">
+        <BigButton onClick={onHome} variant="secondary">
+          ← Back to home
+        </BigButton>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Root ----------
+
 export function MathFightingDojo() {
   const [screen, setScreen] = useState<Screen>("home");
   const [currentLevel, setCurrentLevel] = useState(1);
   const [battleKey, setBattleKey] = useState(0);
+  const [tpWinner, setTpWinner] = useState<PlayerId>("player1");
 
   const startBattle = () => {
     setBattleKey((k) => k + 1);
     setScreen("battle");
   };
+  const startTwoPlayer = () => {
+    setBattleKey((k) => k + 1);
+    setScreen("two-player");
+  };
 
   return (
     <div className="mx-auto max-w-md">
       {screen === "home" && (
-        <HomeScreen onPlay={startBattle} onTrain={() => setScreen("training")} />
+        <HomeScreen
+          onPlay={startBattle}
+          onTwoPlayer={startTwoPlayer}
+          onTrain={() => setScreen("training")}
+          onSettings={() => setScreen("settings")}
+        />
       )}
       {screen === "battle" && (
         <BattleScreen
@@ -553,12 +890,37 @@ export function MathFightingDojo() {
           onHome={() => setScreen("home")}
         />
       )}
+      {screen === "two-player" && (
+        <TwoPlayerBattleScreen
+          key={battleKey}
+          level={currentLevel}
+          onFinish={(w) => {
+            setTpWinner(w);
+            setScreen("two-player-result");
+          }}
+          onHome={() => setScreen("home")}
+        />
+      )}
       {screen === "training" && <TrainingScreen onHome={() => setScreen("home")} />}
+      {screen === "settings" && (
+        <SettingsScreen
+          level={currentLevel}
+          setLevel={setCurrentLevel}
+          onHome={() => setScreen("home")}
+        />
+      )}
       {screen === "victory" && (
         <ResultScreen kind="victory" onRetry={startBattle} onHome={() => setScreen("home")} />
       )}
       {screen === "defeat" && (
         <ResultScreen kind="defeat" onRetry={startBattle} onHome={() => setScreen("home")} />
+      )}
+      {screen === "two-player-result" && (
+        <TwoPlayerResultScreen
+          winner={tpWinner}
+          onRetry={startTwoPlayer}
+          onHome={() => setScreen("home")}
+        />
       )}
     </div>
   );
