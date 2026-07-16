@@ -1,4 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DaughterSprite } from "./DaughterSprite";
+import type { AnimationType } from "./spriteConfig";
+
+const DAUGHTER_SPRITE_URL = "/assets/daughter-sprite.png";
+
+function poseToAnimation(pose: "idle" | "hit" | "attack" | "block"): AnimationType {
+  if (pose === "attack") return "punch";
+  return "idle";
+}
 
 type Screen =
   | "home"
@@ -466,8 +475,12 @@ function BattleScreen({
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <div className="text-[var(--dojo-primary)]">
-          <Stickman pose={playerPose} flipped />
+        <div className="text-[var(--dojo-primary)] flex justify-center" style={{ height: 170 }}>
+          <DaughterSprite
+            animationType={poseToAnimation(playerPose)}
+            isAnimating={true}
+            spriteUrl={DAUGHTER_SPRITE_URL}
+          />
         </div>
         <ComboMeter combo={comboCount} />
         <HealthBar
