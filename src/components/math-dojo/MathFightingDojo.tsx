@@ -1,13 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DaughterSprite } from "./DaughterSprite";
-import type { AnimationType } from "./spriteConfig";
-
-const DAUGHTER_SPRITE_URL = "/assets/daughter-sprite.png";
-
-function poseToAnimation(pose: "idle" | "hit" | "attack" | "block"): AnimationType {
-  if (pose === "attack") return "punch";
-  return "idle";
-}
 
 type Screen =
   | "home"
@@ -306,9 +297,9 @@ function HomeScreen({
       </div>
 
       <div className="flex w-full items-center justify-center gap-4 py-4">
-        <DaughterSprite animationType="idle" isAnimating spriteUrl={DAUGHTER_SPRITE_URL} />
+        <Stickman pose="idle" />
         <div className="self-center text-4xl">⚔️</div>
-        <DaughterSprite animationType="idle" isAnimating spriteUrl={DAUGHTER_SPRITE_URL} flipped />
+        <Stickman pose="idle" flipped />
       </div>
 
       <div className="flex w-full max-w-sm flex-col gap-3">
@@ -457,11 +448,7 @@ function BattleScreen({
           label="👹 Boss"
         />
         <div className="flex justify-center" style={{ height: 170 }}>
-          <DaughterSprite
-            animationType={poseToAnimation(npcPose)}
-            isAnimating
-            spriteUrl={DAUGHTER_SPRITE_URL}
-          />
+          <Stickman pose={npcPose} />
         </div>
       </div>
 
@@ -480,11 +467,7 @@ function BattleScreen({
 
       <div className="flex flex-col items-center gap-2">
         <div className="text-[var(--dojo-primary)] flex justify-center" style={{ height: 170 }}>
-          <DaughterSprite
-            animationType={poseToAnimation(playerPose)}
-            isAnimating={true}
-            spriteUrl={DAUGHTER_SPRITE_URL}
-          />
+          <Stickman pose={playerPose} />
         </div>
         <ComboMeter combo={comboCount} />
         <HealthBar
@@ -619,7 +602,7 @@ function TwoPlayerBattleScreen({
           label="🌸 Player 2"
         />
         <div className="flex justify-center" style={{ height: 170 }}>
-          <DaughterSprite animationType="idle" isAnimating spriteUrl={DAUGHTER_SPRITE_URL} />
+          <Stickman pose="idle" flipped />
         </div>
         {!isP1Turn && (
           <div className="rounded-full bg-pink-500 px-4 py-1 text-sm font-black text-white">
@@ -655,7 +638,7 @@ function TwoPlayerBattleScreen({
           </div>
         )}
         <div className="flex justify-center" style={{ height: 170 }}>
-          <DaughterSprite animationType="idle" isAnimating spriteUrl={DAUGHTER_SPRITE_URL} flipped />
+          <Stickman pose="idle" />
         </div>
         <HealthBar
           value={p1Health}
