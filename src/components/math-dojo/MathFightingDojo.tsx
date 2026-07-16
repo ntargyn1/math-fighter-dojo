@@ -305,10 +305,10 @@ function HomeScreen({
         </p>
       </div>
 
-      <div className="flex w-full justify-center gap-6 py-4 text-[var(--dojo-primary)]">
-        <Stickman pose="idle" />
+      <div className="flex w-full items-center justify-center gap-4 py-4">
+        <DaughterSprite animationType="idle" isAnimating spriteUrl={DAUGHTER_SPRITE_URL} />
         <div className="self-center text-4xl">⚔️</div>
-        <Stickman pose="idle" flipped />
+        <DaughterSprite animationType="idle" isAnimating spriteUrl={DAUGHTER_SPRITE_URL} flipped />
       </div>
 
       <div className="flex w-full max-w-sm flex-col gap-3">
@@ -456,8 +456,12 @@ function BattleScreen({
           color="var(--dojo-danger)"
           label="👹 Boss"
         />
-        <div className="text-[var(--dojo-danger)]">
-          <Stickman pose={npcPose} />
+        <div className="flex justify-center" style={{ height: 170 }}>
+          <DaughterSprite
+            animationType={poseToAnimation(npcPose)}
+            isAnimating
+            spriteUrl={DAUGHTER_SPRITE_URL}
+          />
         </div>
       </div>
 
@@ -614,8 +618,8 @@ function TwoPlayerBattleScreen({
           color="#ec4899"
           label="🌸 Player 2"
         />
-        <div className="text-pink-500">
-          <Stickman pose="idle" />
+        <div className="flex justify-center" style={{ height: 170 }}>
+          <DaughterSprite animationType="idle" isAnimating spriteUrl={DAUGHTER_SPRITE_URL} />
         </div>
         {!isP1Turn && (
           <div className="rounded-full bg-pink-500 px-4 py-1 text-sm font-black text-white">
@@ -650,8 +654,8 @@ function TwoPlayerBattleScreen({
             PLAYER 1 — YOUR TURN
           </div>
         )}
-        <div className="text-sky-500">
-          <Stickman pose="idle" flipped />
+        <div className="flex justify-center" style={{ height: 170 }}>
+          <DaughterSprite animationType="idle" isAnimating spriteUrl={DAUGHTER_SPRITE_URL} flipped />
         </div>
         <HealthBar
           value={p1Health}
