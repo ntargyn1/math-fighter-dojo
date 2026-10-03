@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Math dojo: sound synthesis in sound.ts (WebAudio), belt/wins logic in belts.ts (localStorage); game FX via framer-motion useFightFx hook — keeps game client-only.
