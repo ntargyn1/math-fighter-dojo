@@ -151,12 +151,13 @@ function useFightFx() {
   const idRef = useRef(0);
   const controls = { top, bottom };
 
+  // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
   const strike = async (attacker: Side, text: string, shake: boolean) => {
     const defender: Side = attacker === "top" ? "bottom" : "top";
-    const dir = attacker === "top" ? 1 : -1;
+    const dir = attacker === "bottom" ? 1 : -1; // left attacker moves right
     setPoses({ [attacker]: "attack", [defender]: "idle" } as Record<Side, Pose>);
     // Lunge (150ms)
-    await controls[attacker].start({ y: dir * 55, transition: { duration: 0.15, ease: "easeIn" } });
+    await controls[attacker].start({ x: dir * 60, transition: { duration: 0.15, ease: "easeIn" } });
     // Impact frame
     const id = ++idRef.current;
     setFlash(defender);
@@ -167,8 +168,13 @@ function useFightFx() {
     // Hitstop: freeze everything for 100ms
     await wait(100);
     if (shake) void stage.start({ x: [0, 4, -4, 4, -4, 0], transition: { duration: 0.2 } });
-    void controls[defender].start({ scaleY: 1, transition: { type: "spring", stiffness: 600, damping: 10 } });
-    await controls[attacker].start({ y: 0, transition: { duration: 0.15, ease: "easeOut" } });
+    // Knockback + squash recovery
+    void controls[defender].start({
+      scaleY: 1,
+      x: [dir * 18, 0],
+      transition: { scaleY: { type: "spring", stiffness: 600, damping: 10 }, x: { duration: 0.3, ease: "easeOut" } },
+    });
+    await controls[attacker].start({ x: 0, transition: { duration: 0.15, ease: "easeOut" } });
     setTimeout(() => setFlash((f) => (f === defender ? null : f)), 150);
     setTimeout(() => {
       setPopups((p) => p.filter((x) => x.id !== id));
@@ -181,16 +187,18 @@ function useFightFx() {
   const dodge = async (side: Side, text: string) => {
     const id = ++idRef.current;
     setPopups((p) => [...p, { id, side, text }]);
-    await controls[side].start({ x: [0, 30, 0], transition: { duration: 0.35 } });
+    const away = side === "bottom" ? -30 : 30;
+    await controls[side].start({ x: [0, away, 0], transition: { duration: 0.35 } });
     setTimeout(() => setPopups((p) => p.filter((x) => x.id !== id)), 900);
   };
 
   const knockOut = async (side: Side) => {
     setKo(side);
     await controls[side].start({
-      rotate: side === "top" ? -80 : 80,
+      rotate: side === "bottom" ? -80 : 80,
+      x: side === "bottom" ? -30 : 30,
       opacity: 0.5,
-      transition: { duration: 0.9, ease: "easeOut" },
+      transition: { duration: 1.2, ease: [0.1, 0.6, 0.2, 1] },
     });
   };
 
@@ -198,9 +206,9 @@ function useFightFx() {
 }
 type FightFx = ReturnType<typeof useFightFx>;
 
-function StarBurst() {
+function StarBurst({ side }: { side: Side }) {
   return (
-    <div className="pointer-events-none absolute left-1/2 top-1/3">
+    <div className={`pointer-events-none absolute top-[35%] ${side === "top" ? "left-[20%]" : "right-[20%]"}`}>
       {Array.from({ length: 8 }).map((_, i) => {
         const ang = (i / 8) * Math.PI * 2;
         return (
@@ -219,21 +227,14 @@ function StarBurst() {
   );
 }
 
-function FighterSlot({
-  fx,
-  side,
-  color,
-  flipped,
-}: {
-  fx: FightFx;
-  side: Side;
-  color: string;
-  flipped?: boolean;
-}) {
+function FighterSlot({ fx, side, color }: { fx: FightFx; side: Side; color: string }) {
+  // Left fighter (bottom) faces right; right fighter (top) is mirrored to face left.
+  const flipped = side === "top";
   return (
-    <div className="relative flex justify-center" style={{ height: 150 }}>
+    <div className="relative flex h-full w-[38%] items-end justify-center">
       <motion.div
         animate={fx.controls[side]}
+        className="h-[85%] w-full"
         style={{ color: fx.flash === side ? "var(--dojo-danger)" : color, originY: 1 }}
       >
         <Stickman pose={fx.poses[side]} flipped={flipped} />
@@ -241,7 +242,7 @@ function FighterSlot({
       {fx.bursts
         .filter((b) => b.side === side)
         .map((b) => (
-          <StarBurst key={b.id} />
+          <StarBurst key={b.id} side={side} />
         ))}
       <AnimatePresence>
         {fx.popups
@@ -253,13 +254,37 @@ function FighterSlot({
               animate={{ y: -60, opacity: 0, scale: 1.3 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.9, delay: 0.1 }}
-              className="pointer-events-none absolute top-4 whitespace-nowrap text-3xl font-black text-[var(--dojo-danger)]"
+              className="pointer-events-none absolute top-2 whitespace-nowrap text-3xl font-black text-[var(--dojo-danger)]"
               style={{ textShadow: "0 2px 0 white, 0 -2px 0 white, 2px 0 0 white, -2px 0 0 white" }}
             >
               {p.text}
             </motion.div>
           ))}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function Arena({
+  fx,
+  leftColor,
+  rightColor,
+  banner,
+}: {
+  fx: FightFx;
+  leftColor: string;
+  rightColor: string;
+  banner?: React.ReactNode;
+}) {
+  return (
+    <div className="relative flex h-[40vh] min-h-56 w-full items-end justify-between overflow-hidden rounded-3xl bg-white/50 px-2 pb-3 shadow-inner">
+      <div className="absolute inset-x-6 bottom-3 h-1 rounded-full bg-foreground/15" />
+      {banner && <div className="absolute inset-x-0 top-2 z-10 flex justify-center">{banner}</div>}
+      <FighterSlot fx={fx} side="bottom" color={leftColor} />
+      <div className="mb-[18%] shrink-0 rounded-full bg-[var(--dojo-accent)] px-2 py-1 text-xs font-black text-[var(--dojo-accent-foreground)] shadow">
+        VS
+      </div>
+      <FighterSlot fx={fx} side="top" color={rightColor} />
     </div>
   );
 }
