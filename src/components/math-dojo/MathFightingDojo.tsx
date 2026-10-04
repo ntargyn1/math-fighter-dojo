@@ -24,7 +24,7 @@ interface Question {
   correctAnswer: number;
 }
 
-const QUESTION_TIME = 5;
+const QUESTION_TIME = 4;
 const FAST_ANSWER_THRESHOLD = 2; // seconds
 const FAST_MULTIPLIER = 1.5;
 const ULTIMATE_DAMAGE = 150;
@@ -342,7 +342,7 @@ function Stickman({ pose, flipped }: { pose: Pose; flipped?: boolean }) {
   const color = "currentColor";
   const armAngle = pose === "attack" ? -40 : pose === "hit" ? 20 : pose === "block" ? -10 : 0;
   return (
-    <svg viewBox="0 0 100 140" className="h-28 w-20" style={{ transform: flipped ? "scaleX(-1)" : undefined }}>
+    <svg viewBox="0 0 100 140" className="h-full w-full" preserveAspectRatio="xMidYMax meet" style={{ transform: flipped ? "scaleX(-1)" : undefined }}>
       <circle cx="50" cy="20" r="14" stroke={color} strokeWidth="4" fill="none" />
       <line x1="50" y1="34" x2="50" y2="80" stroke={color} strokeWidth="4" />
       <line x1="50" y1="50" x2={25} y2={50 + armAngle} stroke={color} strokeWidth="4" />
@@ -421,8 +421,9 @@ function BigButton({
 
 function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title: string }) {
   return (
-    <div className="flex w-full flex-col gap-2 rounded-3xl bg-white/70 p-4 shadow-inner">
-      <div className="text-center text-lg font-black text-[var(--dojo-primary)]">{title}</div>
+    <div className="flex w-full flex-col gap-2 rounded-3xl bg-white/70 p-3 shadow-inner">
+      <div className="text-center text-base font-black text-[var(--dojo-primary)]">{title}</div>
+      <div className="grid grid-cols-3 gap-2">
       {(Object.keys(PUNCHES) as PunchKind[]).map((k) => {
         const p = PUNCHES[k];
         return (
@@ -433,7 +434,7 @@ function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title:
               sfx.click();
               onPick(k);
             }}
-            className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left shadow-lg active:scale-95 transition-transform ${
+            className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center shadow-lg active:scale-95 transition-transform ${
               k === "light"
                 ? "bg-[var(--dojo-secondary)] text-[var(--dojo-secondary-foreground)]"
                 : k === "medium"
@@ -441,10 +442,9 @@ function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title:
                   : "bg-[var(--dojo-danger)] text-[var(--dojo-primary-foreground)]"
             }`}
           >
-            <span className="text-xl font-black">
-              {p.emoji} {p.label}
-            </span>
-            <span className="text-right text-xs font-bold leading-tight">
+            <span className="text-3xl leading-none">{p.emoji}</span>
+            <span className="text-sm font-black leading-tight">{p.label}</span>
+            <span className="text-[11px] font-bold leading-tight">
               Hit -{p.damage}
               <br />
               {p.risk}
@@ -452,6 +452,7 @@ function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title:
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -480,7 +481,7 @@ function QuestionCard({
   const timerPct = (timeRemaining / QUESTION_TIME) * 100;
   const isFastWindow = QUESTION_TIME - timeRemaining <= FAST_ANSWER_THRESHOLD;
   return (
-    <div className="relative flex w-full flex-col items-center gap-3 rounded-3xl bg-white/70 p-4 shadow-inner">
+    <div className="relative flex w-full flex-col items-center gap-2 rounded-3xl bg-white/70 p-3 shadow-inner">
       <AnimatePresence>
         {flash && (
           <motion.div
@@ -505,7 +506,7 @@ function QuestionCard({
       <div className="text-4xl font-black text-[var(--dojo-primary)]">
         {question.a} {question.operator} {question.b} = ?
       </div>
-      <div className="flex w-full flex-col gap-2">
+      <div className="grid w-full grid-cols-3 gap-2">
         {options.map((opt) => (
           <BigButton key={opt} variant={answerVariant} onClick={() => onAnswer(opt)} disabled={disabled}>
             {opt}
