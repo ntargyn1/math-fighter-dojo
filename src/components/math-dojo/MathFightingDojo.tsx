@@ -24,7 +24,7 @@ interface Question {
   correctAnswer: number;
 }
 
-const QUESTION_TIME = 5;
+const QUESTION_TIME = 4;
 const FAST_ANSWER_THRESHOLD = 2; // seconds
 const FAST_MULTIPLIER = 1.5;
 const ULTIMATE_DAMAGE = 150;
@@ -342,7 +342,7 @@ function Stickman({ pose, flipped }: { pose: Pose; flipped?: boolean }) {
   const color = "currentColor";
   const armAngle = pose === "attack" ? -40 : pose === "hit" ? 20 : pose === "block" ? -10 : 0;
   return (
-    <svg viewBox="0 0 100 140" className="h-28 w-20" style={{ transform: flipped ? "scaleX(-1)" : undefined }}>
+    <svg viewBox="0 0 100 140" className="h-full w-full" preserveAspectRatio="xMidYMax meet" style={{ transform: flipped ? "scaleX(-1)" : undefined }}>
       <circle cx="50" cy="20" r="14" stroke={color} strokeWidth="4" fill="none" />
       <line x1="50" y1="34" x2="50" y2="80" stroke={color} strokeWidth="4" />
       <line x1="50" y1="50" x2={25} y2={50 + armAngle} stroke={color} strokeWidth="4" />
@@ -421,8 +421,9 @@ function BigButton({
 
 function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title: string }) {
   return (
-    <div className="flex w-full flex-col gap-2 rounded-3xl bg-white/70 p-4 shadow-inner">
-      <div className="text-center text-lg font-black text-[var(--dojo-primary)]">{title}</div>
+    <div className="flex w-full flex-col gap-2 rounded-3xl bg-white/70 p-3 shadow-inner">
+      <div className="text-center text-base font-black text-[var(--dojo-primary)]">{title}</div>
+      <div className="grid grid-cols-3 gap-2">
       {(Object.keys(PUNCHES) as PunchKind[]).map((k) => {
         const p = PUNCHES[k];
         return (
@@ -433,7 +434,7 @@ function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title:
               sfx.click();
               onPick(k);
             }}
-            className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left shadow-lg active:scale-95 transition-transform ${
+            className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center shadow-lg active:scale-95 transition-transform ${
               k === "light"
                 ? "bg-[var(--dojo-secondary)] text-[var(--dojo-secondary-foreground)]"
                 : k === "medium"
@@ -441,10 +442,9 @@ function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title:
                   : "bg-[var(--dojo-danger)] text-[var(--dojo-primary-foreground)]"
             }`}
           >
-            <span className="text-xl font-black">
-              {p.emoji} {p.label}
-            </span>
-            <span className="text-right text-xs font-bold leading-tight">
+            <span className="text-3xl leading-none">{p.emoji}</span>
+            <span className="text-sm font-black leading-tight">{p.label}</span>
+            <span className="text-[11px] font-bold leading-tight">
               Hit -{p.damage}
               <br />
               {p.risk}
@@ -452,6 +452,7 @@ function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title:
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -480,7 +481,7 @@ function QuestionCard({
   const timerPct = (timeRemaining / QUESTION_TIME) * 100;
   const isFastWindow = QUESTION_TIME - timeRemaining <= FAST_ANSWER_THRESHOLD;
   return (
-    <div className="relative flex w-full flex-col items-center gap-3 rounded-3xl bg-white/70 p-4 shadow-inner">
+    <div className="relative flex w-full flex-col items-center gap-2 rounded-3xl bg-white/70 p-3 shadow-inner">
       <AnimatePresence>
         {flash && (
           <motion.div
@@ -505,7 +506,7 @@ function QuestionCard({
       <div className="text-4xl font-black text-[var(--dojo-primary)]">
         {question.a} {question.operator} {question.b} = ?
       </div>
-      <div className="flex w-full flex-col gap-2">
+      <div className="grid w-full grid-cols-3 gap-2">
         {options.map((opt) => (
           <BigButton key={opt} variant={answerVariant} onClick={() => onAnswer(opt)} disabled={disabled}>
             {opt}
@@ -607,12 +608,12 @@ function HomeScreen({
       </div>
 
       <div className="flex w-full items-center justify-center gap-4 py-4 text-[var(--dojo-primary)]">
-        <motion.div animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+        <motion.div className="h-28 w-20" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 1.2 }}>
           <Stickman pose="idle" />
         </motion.div>
         <div className="self-center text-4xl">⚔️</div>
         <motion.div
-          className="text-[var(--dojo-danger)]"
+          className="h-28 w-20 text-[var(--dojo-danger)]"
           animate={{ y: [0, -6, 0] }}
           transition={{ repeat: Infinity, duration: 1.2, delay: 0.6 }}
         >
@@ -709,17 +710,17 @@ function BattleScreen({
   round.timeoutRef.current = () => void finish(false);
 
   return (
-    <motion.div animate={fx.stage} className="flex min-h-screen flex-col bg-[var(--dojo-bg)] px-4 py-4">
+    <motion.div animate={fx.stage} className="flex min-h-screen flex-col gap-2 bg-[var(--dojo-bg)] px-3 py-3">
       <KOOverlay show={fx.ko !== null} />
-      <div className="mb-2 flex justify-center">
+      <div className="flex justify-center">
         <BeltBadge wins={wins} />
       </div>
-      <div className="flex flex-col items-center gap-1">
-        <HealthBar value={npcHealth} max={START_NPC_HEALTH} color="var(--dojo-danger)" label="👹 Boss" />
-        <FighterSlot fx={fx} side="top" color="var(--dojo-danger)" flipped />
-      </div>
+      <HealthBar value={npcHealth} max={START_NPC_HEALTH} color="var(--dojo-danger)" label="👹 Boss" />
 
-      <div className="my-2 flex flex-1 flex-col items-center justify-center">
+      <Arena fx={fx} leftColor="var(--dojo-primary)" rightColor="var(--dojo-danger)" />
+
+      <div className="flex flex-1 flex-col items-center justify-end gap-2">
+        <FastMeter streak={streak} />
         {round.phase === "choose" ? (
           <PunchPicker title={`Choose your punch! (Level ${level})`} onPick={(p) => round.begin(p, level)} />
         ) : (
@@ -736,14 +737,10 @@ function BattleScreen({
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-1">
-        <FighterSlot fx={fx} side="bottom" color="var(--dojo-primary)" />
-        <FastMeter streak={streak} />
-        <HealthBar value={playerHealth} max={START_PLAYER_HEALTH} color="var(--dojo-primary)" label="🧒 You" />
-        <button type="button" onClick={onHome} className="mt-2 text-sm font-bold text-foreground/60 underline">
-          Back to home
-        </button>
-      </div>
+      <HealthBar value={playerHealth} max={START_PLAYER_HEALTH} color="var(--dojo-primary)" label="🧒 You" />
+      <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
+        Back to home
+      </button>
     </motion.div>
   );
 }
@@ -857,55 +854,69 @@ function TwoPlayerBattleScreen({
   }
 
   const isP1 = turn === "player1";
-  const name = isP1 ? "Player 1" : "Player 2";
 
-  return (
-    <motion.div animate={fx.stage} className="flex min-h-screen flex-col bg-[var(--dojo-bg)]">
-      <KOOverlay show={fx.ko !== null} />
-      <div className={`flex flex-col items-center gap-1 border-b-4 p-3 ${!isP1 ? "border-pink-500 bg-pink-50" : "border-transparent"}`}>
-        <HealthBar value={health.player2} max={TP_START_HEALTH} color="#ec4899" label={`🌸 Player 2 • Lv ${levels.player2}`} />
-        <FighterSlot fx={fx} side="top" color="#ec4899" flipped />
-        {!isP1 && (
-          <div className="rounded-full bg-pink-500 px-4 py-1 text-sm font-black text-white">
-            PLAYER 2 ATTACKS — answer to strike!
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-1 items-center justify-center px-4 py-3">
+  const zone = (p: PlayerId) => {
+    const active = turn === p;
+    const label = p === "player1" ? "Player 1" : "Player 2";
+    const tint = p === "player1" ? "border-sky-500 bg-sky-50" : "border-pink-500 bg-pink-50";
+    if (!active) {
+      return (
+        <div className="rounded-2xl border-2 border-dashed border-foreground/15 px-3 py-2 text-center text-sm font-bold text-foreground/50">
+          {label} — get ready…
+        </div>
+      );
+    }
+    return (
+      <motion.div
+        key={`${p}-zone`}
+        initial={{ opacity: 0, height: 0 }}
+        animate={{ opacity: 1, height: "auto" }}
+        className={`flex flex-col items-center gap-2 rounded-3xl border-4 p-2 ${tint}`}
+      >
+        <FastMeter streak={streaks[p]} />
         {round.phase === "choose" ? (
-          <PunchPicker
-            title={`${name}: choose your punch!`}
-            onPick={(p) => round.begin(p, levels[turn])}
-          />
+          <PunchPicker title={`${label}: choose your punch!`} onPick={(k) => round.begin(k, levels[p])} />
         ) : (
           <QuestionCard
             question={round.question}
             options={round.options}
             timeRemaining={round.timeRemaining}
-            timerColor={isP1 ? "#0ea5e9" : "#ec4899"}
+            timerColor={p === "player1" ? "#0ea5e9" : "#ec4899"}
             onAnswer={(v) => void finish(v === round.question.correctAnswer)}
             disabled={round.phase !== "question"}
-            answerVariant={isP1 ? "p1" : "p2"}
-            headerText={`${name} attacks • ${PUNCHES[round.punch].label}`}
+            answerVariant={p === "player1" ? "p1" : "p2"}
+            headerText={`${PUNCHES[round.punch].emoji} ${PUNCHES[round.punch].label}`}
             flash={flash}
           />
         )}
+      </motion.div>
+    );
+  };
+
+  return (
+    <motion.div animate={fx.stage} className="flex min-h-screen flex-col gap-2 bg-[var(--dojo-bg)] px-3 py-3">
+      <KOOverlay show={fx.ko !== null} />
+      <HealthBar value={health.player2} max={TP_START_HEALTH} color="#ec4899" label={`🌸 Player 2 • Lv ${levels.player2}`} />
+      {zone("player2")}
+
+      <div className="flex flex-1 flex-col justify-center">
+        <Arena
+          fx={fx}
+          leftColor="#0ea5e9"
+          rightColor="#ec4899"
+          banner={
+            <div className={`rounded-full px-4 py-1 text-sm font-black text-white shadow ${isP1 ? "bg-sky-500" : "bg-pink-500"}`}>
+              {isP1 ? "PLAYER 1 ATTACKS" : "PLAYER 2 ATTACKS"}
+            </div>
+          }
+        />
       </div>
 
-      <div className={`flex flex-col items-center gap-1 border-t-4 p-3 ${isP1 ? "border-sky-500 bg-sky-50" : "border-transparent"}`}>
-        {isP1 && (
-          <div className="rounded-full bg-sky-500 px-4 py-1 text-sm font-black text-white">
-            PLAYER 1 ATTACKS — answer to strike!
-          </div>
-        )}
-        <FighterSlot fx={fx} side="bottom" color="#0ea5e9" />
-        <FastMeter streak={streaks[turn]} />
-        <HealthBar value={health.player1} max={TP_START_HEALTH} color="#0ea5e9" label={`🌊 Player 1 • Lv ${levels.player1}`} />
-        <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
-          Back to home
-        </button>
-      </div>
+      {zone("player1")}
+      <HealthBar value={health.player1} max={TP_START_HEALTH} color="#0ea5e9" label={`🌊 Player 1 • Lv ${levels.player1}`} />
+      <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
+        Back to home
+      </button>
     </motion.div>
   );
 }
