@@ -710,17 +710,17 @@ function BattleScreen({
   round.timeoutRef.current = () => void finish(false);
 
   return (
-    <motion.div animate={fx.stage} className="flex min-h-screen flex-col bg-[var(--dojo-bg)] px-4 py-4">
+    <motion.div animate={fx.stage} className="flex min-h-screen flex-col gap-2 bg-[var(--dojo-bg)] px-3 py-3">
       <KOOverlay show={fx.ko !== null} />
-      <div className="mb-2 flex justify-center">
+      <div className="flex justify-center">
         <BeltBadge wins={wins} />
       </div>
-      <div className="flex flex-col items-center gap-1">
-        <HealthBar value={npcHealth} max={START_NPC_HEALTH} color="var(--dojo-danger)" label="👹 Boss" />
-        <FighterSlot fx={fx} side="top" color="var(--dojo-danger)" flipped />
-      </div>
+      <HealthBar value={npcHealth} max={START_NPC_HEALTH} color="var(--dojo-danger)" label="👹 Boss" />
 
-      <div className="my-2 flex flex-1 flex-col items-center justify-center">
+      <Arena fx={fx} leftColor="var(--dojo-primary)" rightColor="var(--dojo-danger)" />
+
+      <div className="flex flex-1 flex-col items-center justify-end gap-2">
+        <FastMeter streak={streak} />
         {round.phase === "choose" ? (
           <PunchPicker title={`Choose your punch! (Level ${level})`} onPick={(p) => round.begin(p, level)} />
         ) : (
@@ -737,14 +737,10 @@ function BattleScreen({
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-1">
-        <FighterSlot fx={fx} side="bottom" color="var(--dojo-primary)" />
-        <FastMeter streak={streak} />
-        <HealthBar value={playerHealth} max={START_PLAYER_HEALTH} color="var(--dojo-primary)" label="🧒 You" />
-        <button type="button" onClick={onHome} className="mt-2 text-sm font-bold text-foreground/60 underline">
-          Back to home
-        </button>
-      </div>
+      <HealthBar value={playerHealth} max={START_PLAYER_HEALTH} color="var(--dojo-primary)" label="🧒 You" />
+      <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
+        Back to home
+      </button>
     </motion.div>
   );
 }
