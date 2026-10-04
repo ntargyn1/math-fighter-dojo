@@ -608,12 +608,12 @@ function HomeScreen({
       </div>
 
       <div className="flex w-full items-center justify-center gap-4 py-4 text-[var(--dojo-primary)]">
-        <motion.div animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+        <motion.div className="h-28 w-20" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 1.2 }}>
           <Stickman pose="idle" />
         </motion.div>
         <div className="self-center text-4xl">⚔️</div>
         <motion.div
-          className="text-[var(--dojo-danger)]"
+          className="h-28 w-20 text-[var(--dojo-danger)]"
           animate={{ y: [0, -6, 0] }}
           transition={{ repeat: Infinity, duration: 1.2, delay: 0.6 }}
         >
@@ -854,7 +854,6 @@ function TwoPlayerBattleScreen({
   }
 
   const isP1 = turn === "player1";
-  const name = isP1 ? "Player 1" : "Player 2";
 
   const zone = (p: PlayerId) => {
     const active = turn === p;
