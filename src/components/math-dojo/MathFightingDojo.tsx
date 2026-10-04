@@ -856,53 +856,68 @@ function TwoPlayerBattleScreen({
   const isP1 = turn === "player1";
   const name = isP1 ? "Player 1" : "Player 2";
 
-  return (
-    <motion.div animate={fx.stage} className="flex min-h-screen flex-col bg-[var(--dojo-bg)]">
-      <KOOverlay show={fx.ko !== null} />
-      <div className={`flex flex-col items-center gap-1 border-b-4 p-3 ${!isP1 ? "border-pink-500 bg-pink-50" : "border-transparent"}`}>
-        <HealthBar value={health.player2} max={TP_START_HEALTH} color="#ec4899" label={`🌸 Player 2 • Lv ${levels.player2}`} />
-        <FighterSlot fx={fx} side="top" color="#ec4899" flipped />
-        {!isP1 && (
-          <div className="rounded-full bg-pink-500 px-4 py-1 text-sm font-black text-white">
-            PLAYER 2 ATTACKS — answer to strike!
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-1 items-center justify-center px-4 py-3">
+  const zone = (p: PlayerId) => {
+    const active = turn === p;
+    const label = p === "player1" ? "Player 1" : "Player 2";
+    const tint = p === "player1" ? "border-sky-500 bg-sky-50" : "border-pink-500 bg-pink-50";
+    if (!active) {
+      return (
+        <div className="rounded-2xl border-2 border-dashed border-foreground/15 px-3 py-2 text-center text-sm font-bold text-foreground/50">
+          {label} — get ready…
+        </div>
+      );
+    }
+    return (
+      <motion.div
+        key={`${p}-zone`}
+        initial={{ opacity: 0, height: 0 }}
+        animate={{ opacity: 1, height: "auto" }}
+        className={`flex flex-col items-center gap-2 rounded-3xl border-4 p-2 ${tint}`}
+      >
+        <FastMeter streak={streaks[p]} />
         {round.phase === "choose" ? (
-          <PunchPicker
-            title={`${name}: choose your punch!`}
-            onPick={(p) => round.begin(p, levels[turn])}
-          />
+          <PunchPicker title={`${label}: choose your punch!`} onPick={(k) => round.begin(k, levels[p])} />
         ) : (
           <QuestionCard
             question={round.question}
             options={round.options}
             timeRemaining={round.timeRemaining}
-            timerColor={isP1 ? "#0ea5e9" : "#ec4899"}
+            timerColor={p === "player1" ? "#0ea5e9" : "#ec4899"}
             onAnswer={(v) => void finish(v === round.question.correctAnswer)}
             disabled={round.phase !== "question"}
-            answerVariant={isP1 ? "p1" : "p2"}
-            headerText={`${name} attacks • ${PUNCHES[round.punch].label}`}
+            answerVariant={p === "player1" ? "p1" : "p2"}
+            headerText={`${PUNCHES[round.punch].emoji} ${PUNCHES[round.punch].label}`}
             flash={flash}
           />
         )}
+      </motion.div>
+    );
+  };
+
+  return (
+    <motion.div animate={fx.stage} className="flex min-h-screen flex-col gap-2 bg-[var(--dojo-bg)] px-3 py-3">
+      <KOOverlay show={fx.ko !== null} />
+      <HealthBar value={health.player2} max={TP_START_HEALTH} color="#ec4899" label={`🌸 Player 2 • Lv ${levels.player2}`} />
+      {zone("player2")}
+
+      <div className="flex flex-1 flex-col justify-center">
+        <Arena
+          fx={fx}
+          leftColor="#0ea5e9"
+          rightColor="#ec4899"
+          banner={
+            <div className={`rounded-full px-4 py-1 text-sm font-black text-white shadow ${isP1 ? "bg-sky-500" : "bg-pink-500"}`}>
+              {isP1 ? "PLAYER 1 ATTACKS" : "PLAYER 2 ATTACKS"}
+            </div>
+          }
+        />
       </div>
 
-      <div className={`flex flex-col items-center gap-1 border-t-4 p-3 ${isP1 ? "border-sky-500 bg-sky-50" : "border-transparent"}`}>
-        {isP1 && (
-          <div className="rounded-full bg-sky-500 px-4 py-1 text-sm font-black text-white">
-            PLAYER 1 ATTACKS — answer to strike!
-          </div>
-        )}
-        <FighterSlot fx={fx} side="bottom" color="#0ea5e9" />
-        <FastMeter streak={streaks[turn]} />
-        <HealthBar value={health.player1} max={TP_START_HEALTH} color="#0ea5e9" label={`🌊 Player 1 • Lv ${levels.player1}`} />
-        <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
-          Back to home
-        </button>
-      </div>
+      {zone("player1")}
+      <HealthBar value={health.player1} max={TP_START_HEALTH} color="#0ea5e9" label={`🌊 Player 1 • Lv ${levels.player1}`} />
+      <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
+        Back to home
+      </button>
     </motion.div>
   );
 }
