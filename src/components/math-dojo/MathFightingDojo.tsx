@@ -12,7 +12,7 @@ type Screen =
   | "two-player"
   | "two-player-result"
   | "settings";
-type Operator = "+" | "-";
+type Operator = "+" | "-" | "×" | "÷";
 type PlayerId = "player1" | "player2";
 type Side = "top" | "bottom";
 type Pose = "idle" | "hit" | "attack" | "block";
@@ -22,9 +22,11 @@ interface Question {
   b: number;
   operator: Operator;
   correctAnswer: number;
+  level: number;
 }
 
 const QUESTION_TIME = 4;
+export const questionTime = (level: number) => (clampLevel(level) <= 5 ? 4 : 5);
 const FAST_ANSWER_THRESHOLD = 2; // seconds
 const FAST_MULTIPLIER = 1.5;
 const ULTIMATE_DAMAGE = 150;
@@ -48,40 +50,56 @@ function randInt(min: number, max: number) {
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const clampLevel = (l: number) => Math.max(1, Math.min(20, l));
 
-export function generateQuestion(rawLevel: number): Question {
-  const level = clampLevel(rawLevel);
-  let a: number;
-  let b: number;
-  let operator: Operator = "+";
-  if (level <= 5) {
-    a = randInt(0, 10);
-    b = randInt(0, 10 - a);
-  } else if (level <= 10) {
-    a = randInt(0, 20);
-    b = randInt(0, 20 - a);
-  } else if (level <= 15) {
-    a = randInt(1, 10);
-    b = randInt(0, a);
-    operator = "-";
-  } else {
-    operator = Math.random() < 0.5 ? "+" : "-";
-    if (operator === "+") {
-      a = randInt(0, 20);
-      b = randInt(0, 20 - a);
-    } else {
-      a = randInt(1, 20);
-      b = randInt(0, a);
-    }
-  }
-  const correctAnswer = operator === "+" ? a + b : a - b;
-  return { a, b, operator, correctAnswer };
+export function levelDescription(rawLevel: number): string {
+  const l = clampLevel(rawLevel);
+  if (l <= 3) return `Level ${l}: + and - 0–10`;
+  if (l <= 5) return `Level ${l}: + and - 0–20`;
+  if (l <= 10) return `Level ${l}: x2–x6 + division`;
+  if (l <= 15) return `Level ${l}: x2–x10 + division`;
+  return `Level ${l}: x2–x12 + division`;
 }
 
-function generateOptions(correct: number): number[] {
+export function generateQuestion(rawLevel: number): Question {
+  const level = clampLevel(rawLevel);
+  if (level <= 5) {
+    const max = level <= 3 ? 10 : 20;
+    if (Math.random() < 0.5) {
+      const a = randInt(0, max);
+      const b = randInt(0, max - a);
+      return { a, b, operator: "+", correctAnswer: a + b, level };
+    }
+    const a = randInt(1, max);
+    const b = randInt(0, a);
+    return { a, b, operator: "-", correctAnswer: a - b, level };
+  }
+  const maxTable = level <= 10 ? 6 : level <= 15 ? 10 : 12;
+  const x = randInt(2, maxTable);
+  const y = randInt(2, maxTable);
+  if (Math.random() < 0.5) return { a: x, b: y, operator: "×", correctAnswer: x * y, level };
+  const c = x * y;
+  return Math.random() < 0.5
+    ? { a: c, b: x, operator: "÷", correctAnswer: y, level }
+    : { a: c, b: y, operator: "÷", correctAnswer: x, level };
+}
+
+function generateOptions(correct: number, q?: Question): number[] {
   const set = new Set<number>([correct]);
+  const cands: number[] = [];
+  if (q && q.operator === "×") {
+    // neighbors in the times tables: (a±1)×b, a×(b±1)
+    cands.push((q.a - 1) * q.b, (q.a + 1) * q.b, q.a * (q.b - 1), q.a * (q.b + 1), correct - 2, correct + 2);
+  } else {
+    cands.push(correct - 1, correct + 1, correct - 2, correct + 2);
+  }
+  const pool = cands.filter((c) => c >= 0 && c !== correct).sort(() => Math.random() - 0.5);
+  for (const c of pool) {
+    if (set.size >= 3) break;
+    set.add(c);
+  }
+  let d = 3;
   while (set.size < 3) {
-    const candidate = correct + randInt(-3, 3);
-    if (candidate >= 0 && candidate !== correct) set.add(candidate);
+    if (correct + d >= 0) set.add(correct + d);
+    d++;
   }
   const arr = Array.from(set);
   for (let i = arr.length - 1; i > 0; i--) {
@@ -478,8 +496,9 @@ function QuestionCard({
   headerText?: string;
   flash?: string | null;
 }) {
-  const timerPct = (timeRemaining / QUESTION_TIME) * 100;
-  const isFastWindow = QUESTION_TIME - timeRemaining <= FAST_ANSWER_THRESHOLD;
+  const total = questionTime(question.level);
+  const timerPct = (timeRemaining / total) * 100;
+  const isFastWindow = total - timeRemaining <= FAST_ANSWER_THRESHOLD;
   return (
     <div className="relative flex w-full flex-col items-center gap-2 rounded-3xl bg-white/70 p-3 shadow-inner">
       <AnimatePresence>
@@ -531,8 +550,8 @@ function useRound() {
     const q = generateQuestion(level + PUNCHES[p].levelShift);
     setPunch(p);
     setQuestion(q);
-    setOptions(generateOptions(q.correctAnswer));
-    setTimeRemaining(QUESTION_TIME);
+    setOptions(generateOptions(q.correctAnswer, q));
+    setTimeRemaining(questionTime(q.level));
     startRef.current = Date.now();
     setPhase("question");
   };
@@ -540,14 +559,14 @@ function useRound() {
   useEffect(() => {
     if (phase !== "question") return;
     const id = setInterval(() => {
-      const remaining = QUESTION_TIME - (Date.now() - startRef.current) / 1000;
+      const remaining = questionTime(question.level) - (Date.now() - startRef.current) / 1000;
       if (remaining <= 0) {
         setTimeRemaining(0);
         timeoutRef.current();
       } else setTimeRemaining(remaining);
     }, 100);
     return () => clearInterval(id);
-  }, [phase]);
+  }, [phase, question]);
 
   const elapsed = () => (Date.now() - startRef.current) / 1000;
   return { phase, setPhase, punch, question, options, timeRemaining, begin, elapsed, timeoutRef };
@@ -752,7 +771,7 @@ function LevelSlider({ label, value, onChange, accent }: { label: string; value:
     <div className="w-full rounded-3xl bg-white/70 p-4 shadow-inner">
       <div className="flex justify-between text-lg font-black" style={{ color: accent }}>
         <span>{label}</span>
-        <span>Level {value}</span>
+        <span className="text-right text-sm">{levelDescription(value)}</span>
       </div>
       <input
         type="range"
@@ -926,7 +945,7 @@ function TwoPlayerBattleScreen({
 function TrainingScreen({ onHome }: { onHome: () => void }) {
   const [level, setLevel] = useState(1);
   const [question, setQuestion] = useState<Question>(() => generateQuestion(1));
-  const [options, setOptions] = useState<number[]>(() => generateOptions(question.correctAnswer));
+  const [options, setOptions] = useState<number[]>(() => generateOptions(question.correctAnswer, question));
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const hint = useMemo(() => {
@@ -937,9 +956,20 @@ function TrainingScreen({ onHome }: { onHome: () => void }) {
       if (a + b === 10) return `${a} and ${b} are best friends — they make 10!`;
       return `Try starting at ${a} and taking ${b} steps forward. You land on ${correctAnswer}.`;
     }
+    if (operator === "×") {
+      const n = b <= a ? b : a;
+      const m = n === b ? a : b;
+      if (n === 2) return `x2 means double it: ${m} + ${m} = ${correctAnswer}.`;
+      if (n === 4) return `x4 means double twice: ${m} → ${m * 2} → ${correctAnswer}.`;
+      if (n === 5) return `x5 is half of x10: ${m} x 10 = ${m * 10}, half is ${correctAnswer}.`;
+      if (n === 9) return `x9 is x10 minus the number: ${m * 10} - ${m} = ${correctAnswer}.`;
+      if (n === 10) return `x10 just adds a zero: ${m} → ${correctAnswer}.`;
+      return `Count by ${m}s, ${n} times. You land on ${correctAnswer}.`;
+    }
+    if (operator === "÷") return `Think backwards: ${b} times what makes ${a}? ${b} x ${correctAnswer} = ${a}.`;
     if (b === 0) return `Taking away 0 leaves everything: still ${a}.`;
     if (a === b) return `When both numbers are the same, the answer is 0.`;
-    return `Start at ${a} and take ${b} steps back. You land on ${correctAnswer}.`;
+    return `Count up from the smaller number: ${b} + ? = ${a}. It's ${correctAnswer}!`;
   }, [question]);
 
   const next = () => {
@@ -947,7 +977,7 @@ function TrainingScreen({ onHome }: { onHome: () => void }) {
     setLevel(nextLevel);
     const q = generateQuestion(nextLevel);
     setQuestion(q);
-    setOptions(generateOptions(q.correctAnswer));
+    setOptions(generateOptions(q.correctAnswer, q));
     setFeedback(null);
   };
 
@@ -1085,10 +1115,7 @@ function SettingsScreen({ level, setLevel, onHome }: { level: number; setLevel: 
           <span>20</span>
         </div>
         <div className="mt-4 text-center text-sm text-foreground/70">
-          {level <= 5 && "Addition 0–10"}
-          {level > 5 && level <= 10 && "Addition 0–20"}
-          {level > 10 && level <= 15 && "Subtraction 0–10"}
-          {level > 15 && "Mixed +/− 0–20"}
+          {levelDescription(level)}
         </div>
       </div>
       <div className="mt-4 w-full max-w-sm">
