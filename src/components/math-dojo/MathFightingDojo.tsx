@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
+import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState } from "./Fighter";
 
 type Screen =
   | "home"
@@ -158,69 +159,71 @@ interface Popup {
 }
 
 function useFightFx() {
-  const top = useAnimationControls();
-  const bottom = useAnimationControls();
   const stage = useAnimationControls();
-  const [flash, setFlash] = useState<Side | null>(null);
-  const [poses, setPoses] = useState<Record<Side, Pose>>({ top: "idle", bottom: "idle" });
+  const [states, setStates] = useState<Record<Side, FighterState>>({ top: "idle", bottom: "idle" });
   const [popups, setPopups] = useState<Popup[]>([]);
   const [bursts, setBursts] = useState<Popup[]>([]);
   const [ko, setKo] = useState<Side | null>(null);
   const idRef = useRef(0);
-  const controls = { top, bottom };
+  const cur = useRef<Record<Side, FighterState>>({ top: "idle", bottom: "idle" });
+  const ends = useRef<Record<Side, { p: Promise<void>; r: () => void } | null>>({ top: null, bottom: null });
 
-  // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
-  const strike = async (attacker: Side, text: string, shake: boolean) => {
-    const defender: Side = attacker === "top" ? "bottom" : "top";
-    const dir = attacker === "bottom" ? 1 : -1; // left attacker moves right
-    setPoses({ [attacker]: "attack", [defender]: "idle" } as Record<Side, Pose>);
-    // Lunge (150ms)
-    await controls[attacker].start({ x: dir * 60, transition: { duration: 0.15, ease: "easeIn" } });
-    // Impact frame
+  // State machine: a busy fighter must finish (onAnimationEnd) before a new state starts; only "ko" interrupts.
+  const play = async (side: Side, s: FighterState): Promise<void> => {
+    if (s !== "ko") while (ends.current[side]) await ends.current[side]!.p;
+    if (cur.current[side] === "ko") return;
+    ends.current[side]?.r();
+    let r!: () => void;
+    const p = new Promise<void>((res) => (r = res));
+    ends.current[side] = { p, r };
+    cur.current[side] = s;
+    setStates((st) => ({ ...st, [side]: s }));
+    return p;
+  };
+  const onEnd = (side: Side, s: FighterState) => {
+    if (cur.current[side] !== s) return;
+    const e = ends.current[side];
+    ends.current[side] = null;
+    if (s !== "ko") {
+      cur.current[side] = "idle";
+      setStates((st) => ({ ...st, [side]: "idle" }));
+    }
+    e?.r();
+  };
+
+  const addFx = (side: Side, text: string, burst: boolean) => {
     const id = ++idRef.current;
-    setFlash(defender);
-    setPoses({ [attacker]: "attack", [defender]: "hit" } as Record<Side, Pose>);
-    controls[defender].set({ scaleY: 0.8 });
-    setPopups((p) => [...p, { id, side: defender, text }]);
-    setBursts((b) => [...b, { id, side: defender, text: "" }]);
-    // Hitstop: freeze everything for 100ms
-    await wait(100);
-    if (shake) void stage.start({ x: [0, 4, -4, 4, -4, 0], transition: { duration: 0.2 } });
-    // Knockback + squash recovery
-    void controls[defender].start({
-      scaleY: 1,
-      x: [dir * 18, 0],
-      transition: { scaleY: { type: "spring", stiffness: 600, damping: 10 }, x: { duration: 0.3, ease: "easeOut" } },
-    });
-    await controls[attacker].start({ x: 0, transition: { duration: 0.15, ease: "easeOut" } });
-    setTimeout(() => setFlash((f) => (f === defender ? null : f)), 150);
+    setPopups((p) => [...p, { id, side, text }]);
+    if (burst) setBursts((b) => [...b, { id, side, text: "" }]);
     setTimeout(() => {
       setPopups((p) => p.filter((x) => x.id !== id));
       setBursts((b) => b.filter((x) => x.id !== id));
     }, 1000);
-    await wait(150);
-    setPoses({ top: "idle", bottom: "idle" });
+  };
+
+  // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
+  const strike = async (attacker: Side, text: string, shake: boolean, move: "punch" | "kick" = "punch", reaction: "hit" | "block" = "hit") => {
+    const defender: Side = attacker === "top" ? "bottom" : "top";
+    const atk = play(attacker, move);
+    await wait(LUNGE_MS); // impact frame
+    addFx(defender, text, reaction === "hit");
+    const def = play(defender, reaction);
+    if (shake && reaction === "hit") setTimeout(() => void stage.start({ x: [0, 4, -4, 4, -4, 0], transition: { duration: 0.2 } }), HITSTOP_MS);
+    await Promise.all([atk, def]);
   };
 
   const dodge = async (side: Side, text: string) => {
-    const id = ++idRef.current;
-    setPopups((p) => [...p, { id, side, text }]);
-    const away = side === "bottom" ? -30 : 30;
-    await controls[side].start({ x: [0, away, 0], transition: { duration: 0.35 } });
-    setTimeout(() => setPopups((p) => p.filter((x) => x.id !== id)), 900);
+    addFx(side, text, false);
+    await play(side, "block");
   };
 
   const knockOut = async (side: Side) => {
     setKo(side);
-    await controls[side].start({
-      rotate: side === "bottom" ? -80 : 80,
-      x: side === "bottom" ? -30 : 30,
-      opacity: 0.5,
-      transition: { duration: 1.2, ease: [0.1, 0.6, 0.2, 1] },
-    });
+    await play(side, "ko");
+    await wait(700);
   };
 
-  return { controls, stage, flash, poses, popups, bursts, ko, strike, dodge, knockOut };
+  return { stage, states, onEnd, popups, bursts, ko, strike, dodge, knockOut };
 }
 type FightFx = ReturnType<typeof useFightFx>;
 
@@ -250,13 +253,9 @@ function FighterSlot({ fx, side, color }: { fx: FightFx; side: Side; color: stri
   const flipped = side === "top";
   return (
     <div className="relative flex h-full w-[38%] items-end justify-center">
-      <motion.div
-        animate={fx.controls[side]}
-        className="h-[85%] w-full"
-        style={{ color: fx.flash === side ? "var(--dojo-danger)" : color, originY: 1 }}
-      >
-        <Stickman pose={fx.poses[side]} flipped={flipped} />
-      </motion.div>
+      <div className="h-[85%] w-full">
+        <Fighter state={fx.states[side]} facing={flipped ? "left" : "right"} color={color} onAnimationEnd={(s) => fx.onEnd(side, s)} />
+      </div>
       {fx.bursts
         .filter((b) => b.side === side)
         .map((b) => (
@@ -694,7 +693,7 @@ function BattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       npc -= r.damage;
       setNpcHealth(npc);
-      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light");
+      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "kick" : "punch");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
@@ -702,10 +701,10 @@ function BattleScreen({
       playHitAnimation("player");
       me -= r.counter;
       setPlayerHealth(me);
-      await fx.strike("top", `-${r.counter}`, true);
+      await fx.strike("top", `-${r.counter}`, true, round.punch === "heavy" ? "kick" : "punch");
     } else {
       sfx.whoosh();
-      await fx.dodge("top", "Miss!");
+      await fx.strike("bottom", "Blocked!", false, "punch", "block");
     }
     if (!mounted.current) return;
     setFlash(r.label);
@@ -820,17 +819,17 @@ function TwoPlayerBattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       next[defender] -= r.damage;
       setHealth(next);
-      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light");
+      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "kick" : "punch");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
       sfx.punch(round.punch === "heavy");
       next[attacker] -= r.counter;
       setHealth(next);
-      await fx.strike(sideOf(defender), `-${r.counter}`, true);
+      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "kick" : "punch");
     } else {
       sfx.whoosh();
-      await fx.dodge(sideOf(defender), "Miss!");
+      await fx.strike(sideOf(attacker), "Blocked!", false, "punch", "block");
     }
     if (!mounted.current) return;
     setFlash(r.label);
