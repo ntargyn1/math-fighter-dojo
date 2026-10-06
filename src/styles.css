@@ -71,6 +71,7 @@
   --dojo-accent: oklch(0.78 0.17 70);
   --dojo-accent-foreground: oklch(0.2 0.05 260);
   --dojo-danger: oklch(0.62 0.22 25);
+  --dojo-success: oklch(0.62 0.17 150);
 
   --radius: 0.625rem;
   --background: oklch(1 0 0);
