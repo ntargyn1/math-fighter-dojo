@@ -27,8 +27,8 @@ export interface Question {
   level: number;
 }
 
-const QUESTION_TIME = 4;
-export const questionTime = (level: number) => (clampLevel(level) <= 5 ? 4 : 5);
+const QUESTION_TIME = 10;
+export const questionTime = (level: number) => Math.max(5, 11 - clampLevel(level));
 const FAST_ANSWER_THRESHOLD = 2; // seconds
 const FAST_MULTIPLIER = 1.5;
 const ULTIMATE_DAMAGE = 150;
