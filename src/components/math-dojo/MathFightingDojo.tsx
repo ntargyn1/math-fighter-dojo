@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
+import { TrainingScreen } from "./Training";
 import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState } from "./Fighter";
 
 type Screen =
@@ -13,12 +14,12 @@ type Screen =
   | "two-player"
   | "two-player-result"
   | "settings";
-type Operator = "+" | "-" | "×" | "÷";
+export type Operator = "+" | "-" | "×" | "÷";
 type PlayerId = "player1" | "player2";
 type Side = "top" | "bottom";
 type Pose = "idle" | "hit" | "attack" | "block";
 
-interface Question {
+export interface Question {
   a: number;
   b: number;
   operator: Operator;
@@ -83,7 +84,7 @@ export function generateQuestion(rawLevel: number): Question {
     : { a: c, b: y, operator: "÷", correctAnswer: x, level };
 }
 
-function generateOptions(correct: number, q?: Question): number[] {
+export function generateOptions(correct: number, q?: Question): number[] {
   const set = new Set<number>([correct]);
   const cands: number[] = [];
   if (q && q.operator === "×") {
@@ -399,7 +400,7 @@ function FastMeter({ streak }: { streak: number }) {
   );
 }
 
-function BigButton({
+export function BigButton({
   children,
   onClick,
   variant = "primary",
@@ -939,84 +940,6 @@ function TwoPlayerBattleScreen({
   );
 }
 
-// ---------- Training (unchanged) ----------
-
-function TrainingScreen({ onHome }: { onHome: () => void }) {
-  const [level, setLevel] = useState(1);
-  const [question, setQuestion] = useState<Question>(() => generateQuestion(1));
-  const [options, setOptions] = useState<number[]>(() => generateOptions(question.correctAnswer, question));
-  const [feedback, setFeedback] = useState<string | null>(null);
-
-  const hint = useMemo(() => {
-    const { a, b, operator, correctAnswer } = question;
-    if (operator === "+") {
-      if (b === 1) return `To do ${a} + 1, just count one step up from ${a} to ${a + 1}.`;
-      if (a === 10 || b === 10) return `Adding 10 is easy — the tens digit goes up by 1!`;
-      if (a + b === 10) return `${a} and ${b} are best friends — they make 10!`;
-      return `Try starting at ${a} and taking ${b} steps forward. You land on ${correctAnswer}.`;
-    }
-    if (operator === "×") {
-      const n = b <= a ? b : a;
-      const m = n === b ? a : b;
-      if (n === 2) return `x2 means double it: ${m} + ${m} = ${correctAnswer}.`;
-      if (n === 4) return `x4 means double twice: ${m} → ${m * 2} → ${correctAnswer}.`;
-      if (n === 5) return `x5 is half of x10: ${m} x 10 = ${m * 10}, half is ${correctAnswer}.`;
-      if (n === 9) return `x9 is x10 minus the number: ${m * 10} - ${m} = ${correctAnswer}.`;
-      if (n === 10) return `x10 just adds a zero: ${m} → ${correctAnswer}.`;
-      return `Count by ${m}s, ${n} times. You land on ${correctAnswer}.`;
-    }
-    if (operator === "÷") return `Think backwards: ${b} times what makes ${a}? ${b} x ${correctAnswer} = ${a}.`;
-    if (b === 0) return `Taking away 0 leaves everything: still ${a}.`;
-    if (a === b) return `When both numbers are the same, the answer is 0.`;
-    return `Count up from the smaller number: ${b} + ? = ${a}. It's ${correctAnswer}!`;
-  }, [question]);
-
-  const next = () => {
-    const nextLevel = level < 20 ? level + 1 : 1;
-    setLevel(nextLevel);
-    const q = generateQuestion(nextLevel);
-    setQuestion(q);
-    setOptions(generateOptions(q.correctAnswer, q));
-    setFeedback(null);
-  };
-
-  const handleAnswer = (v: number) => {
-    setFeedback(v === question.correctAnswer ? `✅ Nice! ${hint}` : `❌ Not quite. ${hint}`);
-  };
-
-  return (
-    <div className="flex min-h-screen flex-col items-center bg-[var(--dojo-bg)] px-6 py-8">
-      <h2 className="text-3xl font-black text-[var(--dojo-primary)]">Training</h2>
-      <p className="mt-1 text-sm text-foreground/70">Calm practice. No fighting.</p>
-      <div className="mt-6 w-full max-w-sm rounded-3xl bg-white/70 p-6 shadow-inner">
-        <div className="text-center text-5xl font-black text-[var(--dojo-primary)]">
-          {question.a} {question.operator} {question.b} = ?
-        </div>
-        <div className="mt-6 flex flex-col gap-3">
-          {options.map((opt) => (
-            <BigButton key={opt} variant="answer" onClick={() => handleAnswer(opt)}>
-              {opt}
-            </BigButton>
-          ))}
-        </div>
-        {feedback && (
-          <div className="mt-4 rounded-2xl bg-[var(--dojo-secondary)] p-3 text-center text-base font-semibold text-[var(--dojo-secondary-foreground)]">
-            {feedback}
-          </div>
-        )}
-      </div>
-      <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
-        <BigButton onClick={next} variant="primary">
-          Next question →
-        </BigButton>
-        <BigButton onClick={onHome} variant="secondary">
-          ← Back to home
-        </BigButton>
-      </div>
-    </div>
-  );
-}
-
 // ---------- Result screens ----------
 
 function ResultScreen({
@@ -1197,7 +1120,7 @@ export function MathFightingDojo() {
               onHome={home}
             />
           )}
-          {screen === "training" && <TrainingScreen onHome={home} />}
+          {screen === "training" && <TrainingScreen level={currentLevel} onHome={home} />}
           {screen === "settings" && <SettingsScreen level={currentLevel} setLevel={setCurrentLevel} onHome={home} />}
           {screen === "victory" && <ResultScreen kind="victory" wins={wins} onRetry={startBattle} onHome={home} />}
           {screen === "defeat" && <ResultScreen kind="defeat" wins={wins} onRetry={startBattle} onHome={home} />}
