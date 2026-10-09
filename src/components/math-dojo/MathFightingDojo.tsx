@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
-import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState } from "./Fighter";
+import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState, type AttackMove } from "./Fighter";
 
 type Screen =
   | "home"
@@ -203,7 +203,7 @@ function useFightFx() {
   };
 
   // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
-  const strike = async (attacker: Side, text: string, shake: boolean, move: "punch" | "kick" = "punch", reaction: "hit" | "block" = "hit") => {
+  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit") => {
     const defender: Side = attacker === "top" ? "bottom" : "top";
     const atk = play(attacker, move);
     await wait(LUNGE_MS); // impact frame
@@ -255,7 +255,7 @@ function FighterSlot({ fx, side, color }: { fx: FightFx; side: Side; color: stri
   return (
     <div className="relative flex h-full w-[38%] items-end justify-center">
       <div className="h-[85%] w-full">
-        <Fighter state={fx.states[side]} facing={flipped ? "left" : "right"} color={color} onAnimationEnd={(s) => fx.onEnd(side, s)} />
+        <Fighter state={fx.states[side]} facing={flipped ? "left" : "right"} character={flipped ? "bayan" : "alan"} color={color} onAnimationEnd={(s) => fx.onEnd(side, s)} />
       </div>
       {fx.bursts
         .filter((b) => b.side === side)
@@ -694,7 +694,7 @@ function BattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       npc -= r.damage;
       setNpcHealth(npc);
-      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "kick" : "punch");
+      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "uppercut" : round.punch === "medium" ? "cross" : "jab");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
@@ -702,10 +702,10 @@ function BattleScreen({
       playHitAnimation("player");
       me -= r.counter;
       setPlayerHealth(me);
-      await fx.strike("top", `-${r.counter}`, true, round.punch === "heavy" ? "kick" : "punch");
+      await fx.strike("top", `-${r.counter}`, true, round.punch === "heavy" ? "uppercut" : "cross");
     } else {
       sfx.whoosh();
-      await fx.strike("bottom", "Blocked!", false, "punch", "block");
+      await fx.strike("bottom", "Blocked!", false, "jab", "block");
     }
     if (!mounted.current) return;
     setFlash(r.label);
@@ -820,17 +820,17 @@ function TwoPlayerBattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       next[defender] -= r.damage;
       setHealth(next);
-      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "kick" : "punch");
+      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "uppercut" : round.punch === "medium" ? "cross" : "jab");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
       sfx.punch(round.punch === "heavy");
       next[attacker] -= r.counter;
       setHealth(next);
-      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "kick" : "punch");
+      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "uppercut" : "cross");
     } else {
       sfx.whoosh();
-      await fx.strike(sideOf(attacker), "Blocked!", false, "punch", "block");
+      await fx.strike(sideOf(attacker), "Blocked!", false, "jab", "block");
     }
     if (!mounted.current) return;
     setFlash(r.label);
