@@ -126,7 +126,7 @@ export function Fighter({
     <div className="flex h-full w-full items-end justify-center">
       <motion.div
         animate={controls}
-        className="relative h-full max-w-full"
+        className="relative h-full shrink-0"
         style={{ aspectRatio: `${strip.frameWidth} / ${strip.frameHeight}`, originY: 1, originX: 0.5, filter: FILTERS[flash] }}
         data-fighter-state={state}
       >
