@@ -9,3 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 - Math dojo: sound synthesis in sound.ts (WebAudio), belt/wins logic in belts.ts (localStorage); game FX via framer-motion useFightFx hook — keeps game client-only.
+- Fighter sprites: strips are re-aligned offline (feet-anchored, uniform frame size) and described in spriteConfig.ts; Fighter reads frame count/size from config, so new strips (e.g. *-ko.png) drop in without code changes to game logic.
