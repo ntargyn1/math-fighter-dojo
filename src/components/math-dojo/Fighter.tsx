@@ -38,7 +38,6 @@ export function Fighter({
 }) {
   const controls = useAnimationControls();
   const sprites = CHARACTERS[character];
-  const [playId, setPlayId] = useState(0);
   const [flash, setFlash] = useState<Flash>("none");
   const [frozen, setFrozen] = useState(false);
   // Which strip is visible; hit/ko keep the previous strip when no real strip exists.
@@ -58,7 +57,6 @@ export function Fighter({
     };
     const show = (s: StripConfig) => {
       setStrip(s);
-      setPlayId((n) => n + 1);
     };
     (async () => {
       controls.stop();
@@ -130,7 +128,7 @@ export function Fighter({
         style={{ aspectRatio: `${strip.frameWidth} / ${strip.frameHeight}`, originY: 1, originX: 0.5, filter: FILTERS[flash] }}
         data-fighter-state={state}
       >
-        <SpriteStrip key={playId} strip={strip} mirrored={facing === "left"} paused={frozen} onDone={() => stripDone.current()} />
+        <SpriteStrip strip={strip} mirrored={facing === "left"} paused={frozen} onDone={() => stripDone.current()} />
       </motion.div>
     </div>
   );
@@ -151,7 +149,7 @@ function SpriteStrip({ strip, mirrored, paused, onDone }: { strip: StripConfig; 
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
           ["--sprite-end" as string]: "-100%",
-          animation: `dojo-sprite ${ms}ms steps(${n}, jump-none) ${strip.loop ? "infinite" : "1 forwards"}`,
+          animation: `dojo-sprite ${ms}ms steps(${n}, jump-none) ${strip.loop ? "infinite" : "1"}`,
           animationPlayState: paused ? "paused" : "running",
         }}
       />
