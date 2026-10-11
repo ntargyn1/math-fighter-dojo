@@ -17,11 +17,8 @@ const BLOCK_HOLD_MS = 600;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 type Flash = "none" | "white" | "red";
-const FILTERS: Record<Flash, string | undefined> = {
-  none: undefined,
-  white: "brightness(2.6) saturate(0.2)",
-  red: "sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.9)",
-};
+// Flash is rendered as a blend-mode overlay (not a CSS filter) so the
+// fighter's compositing layer is never torn down mid-animation.
 
 export function Fighter({
   state,
@@ -125,10 +122,20 @@ export function Fighter({
       <motion.div
         animate={controls}
         className="relative w-[160%] max-w-none shrink-0"
-        style={{ aspectRatio: `${strip.frameWidth} / ${strip.frameHeight}`, originY: 1, originX: 0.5, filter: FILTERS[flash] }}
+        style={{ aspectRatio: `${strip.frameWidth} / ${strip.frameHeight}`, originY: 1, originX: 0.5 }}
         data-fighter-state={state}
       >
         <SpriteStrip strip={strip} mirrored={facing === "left"} paused={frozen} onDone={() => stripDone.current()} />
+        {flash !== "none" && (
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundColor: flash === "white" ? "#ffffff" : "#ef4444",
+              opacity: flash === "white" ? 0.65 : 0.3,
+              mixBlendMode: "overlay",
+            }}
+          />
+        )}
       </motion.div>
     </div>
   );
