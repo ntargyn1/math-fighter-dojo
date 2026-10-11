@@ -125,7 +125,7 @@ export function Fighter({
         style={{ aspectRatio: `${strip.frameWidth} / ${strip.frameHeight}`, originY: 1, originX: 0.5 }}
         data-fighter-state={state}
       >
-        <SpriteStrip strip={strip} mirrored={facing === "left"} paused={frozen} onDone={() => stripDone.current()} />
+        <SpriteStrip key={strip.src} strip={strip} mirrored={facing === "left"} paused={frozen} onDone={() => stripDone.current()} />
         {flash !== "none" && (
           <div
             className="pointer-events-none absolute inset-0"
