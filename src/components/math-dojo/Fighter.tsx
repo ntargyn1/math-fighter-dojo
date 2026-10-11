@@ -114,6 +114,11 @@ export function Fighter({
     return () => {
       alive = false;
       setFrozen(false);
+      controls.stop();
+      // If the animation was interrupted mid-flight (e.g. knockback cut short by
+      // the next state), snap back to the neutral spot so the fighter can never
+      // drift off-screen. The newly started state then animates from a clean base.
+      controls.set({ x: 0, y: 0, rotate: 0, scaleY: 1, opacity: 1 });
     };
   }, [state, controls, sprites, d]);
 
