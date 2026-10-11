@@ -70,10 +70,18 @@ export function Fighter({
           show(sprites[state]);
           const dist = state === "uppercut" ? 56 : state === "cross" ? 46 : 36;
           await controls.start({ x: dist * d, y: state === "uppercut" ? -8 : 0, transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
-          if (!alive) return;
+          if (!alive) {
+            controls.set({ x: 0, y: 0, rotate: 0 });
+            return;
+          }
           await freeze();
-          if (!alive) return;
-          await controls.start({ x: 0, y: 0, transition: { duration: 0.15, ease: "easeOut" } });
+          if (!alive) {
+            controls.set({ x: 0, y: 0, rotate: 0 });
+            return;
+          }
+          // Snap back synchronously: awaiting the return can leave the fighter
+          // stranded off its slot if the animation is interrupted.
+          controls.set({ x: 0, y: 0, rotate: 0 });
           await finished; // strip plays exactly once
           if (!alive) return;
           show(sprites.idle);
@@ -84,11 +92,16 @@ export function Fighter({
           setFlash("white");
           controls.set({ scaleY: 0.9, y: 0 });
           await freeze();
-          if (!alive) return;
+          if (!alive) {
+            controls.set({ x: 0, y: 0, rotate: 0, scaleY: 1 });
+            return;
+          }
           setFlash("red");
           await controls.start({ x: [0, -30 * d, -24 * d, -32 * d, -28 * d], scaleY: 1, transition: { duration: 0.2, ease: "easeOut" } });
+          // Snap back synchronously instead of awaiting: if this await is
+          // interrupted the fighter would be left stuck at the knockback offset.
+          controls.set({ x: 0, y: 0, rotate: 0, scaleY: 1 });
           if (alive) setFlash("none");
-          await controls.start({ x: 0, transition: { duration: 0.15 } });
           if (!alive) return;
           show(sprites.idle);
           return done();
