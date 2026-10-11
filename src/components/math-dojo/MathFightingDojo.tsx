@@ -4,7 +4,7 @@ import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState, type AttackMove } from "./Fighter";
-
+import { preloadSprites } from "./spriteConfig";
 type Screen =
   | "home"
   | "battle"
