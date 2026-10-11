@@ -68,8 +68,11 @@ export function Fighter({
         case "uppercut": {
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
-          const dist = state === "uppercut" ? 56 : state === "cross" ? 46 : 36;
-          await controls.start({ x: dist * d, y: state === "uppercut" ? -8 : 0, transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
+          // No horizontal lunge: fighters stay rooted in their slots.
+          // The punch reads entirely from the sprite strip frames.
+          if (state === "uppercut") {
+            await controls.start({ y: -8, transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
+          }
           if (!alive) {
             controls.set({ x: 0, y: 0, rotate: 0 });
             return;
@@ -79,8 +82,6 @@ export function Fighter({
             controls.set({ x: 0, y: 0, rotate: 0 });
             return;
           }
-          // Snap back synchronously: awaiting the return can leave the fighter
-          // stranded off its slot if the animation is interrupted.
           controls.set({ x: 0, y: 0, rotate: 0 });
           await finished; // strip plays exactly once
           if (!alive) return;
@@ -97,9 +98,9 @@ export function Fighter({
             return;
           }
           setFlash("red");
-          await controls.start({ x: [0, -30 * d, -24 * d, -32 * d, -28 * d], scaleY: 1, transition: { duration: 0.2, ease: "easeOut" } });
-          // Snap back synchronously instead of awaiting: if this await is
-          // interrupted the fighter would be left stuck at the knockback offset.
+          // No sideways knockback: squash + flash carry the impact.
+          // (Horizontal knockback was stranding fighters off their slots.)
+          await controls.start({ scaleY: 1, transition: { duration: 0.2, ease: "easeOut" } });
           controls.set({ x: 0, y: 0, rotate: 0, scaleY: 1 });
           if (alive) setFlash("none");
           if (!alive) return;
@@ -107,7 +108,7 @@ export function Fighter({
           return done();
         case "block":
           show(sprites.block);
-          await controls.start({ x: [0, -8 * d, -8 * d, 0], scaleY: [1, 0.95, 0.95, 1], y: 0, transition: { duration: BLOCK_HOLD_MS / 1000, times: [0, 0.15, 0.85, 1] } });
+          await controls.start({ scaleY: [1, 0.95, 0.95, 1], y: 0, transition: { duration: BLOCK_HOLD_MS / 1000, times: [0, 0.15, 0.85, 1] } });
           if (!alive) return;
           show(sprites.idle);
           return done();
@@ -115,10 +116,10 @@ export function Fighter({
           if (sprites.ko) show(sprites.ko);
           setFrozen(true); // interrupt current strip on its current frame
           setFlash("red");
-          await controls.start({ x: -18 * d, rotate: -8 * d, transition: { duration: 0.1, ease: "easeOut" } });
+          await controls.start({ rotate: -8 * d, transition: { duration: 0.1, ease: "easeOut" } });
           if (!alive) return;
           setFlash("none");
-          await controls.start({ rotate: -90 * d, x: -30 * d, y: 6, transition: { duration: 0.45, ease: "easeIn" } });
+          await controls.start({ rotate: -90 * d, y: 6, transition: { duration: 0.45, ease: "easeIn" } });
           if (!alive) return;
           await controls.start({ y: [6, -8, 6, 2, 6], transition: { duration: 0.35, ease: "easeOut" } });
           return done(); // stays lying down until state returns to idle
