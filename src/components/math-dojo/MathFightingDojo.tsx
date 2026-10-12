@@ -4,7 +4,7 @@ import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState, type AttackMove } from "./Fighter";
-import { preloadSprites } from "./spriteConfig";
+
 type Screen =
   | "home"
   | "battle"
@@ -168,7 +168,6 @@ function useFightFx() {
   const idRef = useRef(0);
   const cur = useRef<Record<Side, FighterState>>({ top: "idle", bottom: "idle" });
   const ends = useRef<Record<Side, { p: Promise<void>; r: () => void } | null>>({ top: null, bottom: null });
-  useEffect(() => preloadSprites(), []);
 
   // State machine: a busy fighter must finish (onAnimationEnd) before a new state starts; only "ko" interrupts.
   const play = async (side: Side, s: FighterState): Promise<void> => {
@@ -200,7 +199,7 @@ function useFightFx() {
     setTimeout(() => {
       setPopups((p) => p.filter((x) => x.id !== id));
       setBursts((b) => b.filter((x) => x.id !== id));
-    }, text === "Blocked!" ? 1600 : 1000);
+    }, 1000);
   };
 
   // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
@@ -270,9 +269,9 @@ function FighterSlot({ fx, side, color }: { fx: FightFx; side: Side; color: stri
             <motion.div
               key={p.id}
               initial={{ y: 10, opacity: 1, scale: 0.6 }}
-              animate={p.text === "Blocked!" ? { y: -40, opacity: [1, 1, 0], scale: 1.3 } : { y: -60, opacity: 0, scale: 1.3 }}
+              animate={{ y: -60, opacity: 0, scale: 1.3 }}
               exit={{ opacity: 0 }}
-              transition={p.text === "Blocked!" ? { duration: 1.5, delay: 0.1, times: [0, 0.75, 1] } : { duration: 0.9, delay: 0.1 }}
+              transition={{ duration: 0.9, delay: 0.1 }}
               className="pointer-events-none absolute top-2 whitespace-nowrap text-3xl font-black text-[var(--dojo-danger)]"
               style={{ textShadow: "0 2px 0 white, 0 -2px 0 white, 2px 0 0 white, -2px 0 0 white" }}
             >
@@ -710,7 +709,7 @@ function BattleScreen({
     }
     if (!mounted.current) return;
     setFlash(r.label);
-    await wait(1600);
+    await wait(650);
     if (!mounted.current) return;
     setFlash(null);
     if (npc <= 0 || me <= 0) {
@@ -835,7 +834,7 @@ function TwoPlayerBattleScreen({
     }
     if (!mounted.current) return;
     setFlash(r.label);
-    await wait(1600);
+    await wait(700);
     if (!mounted.current) return;
     setFlash(null);
     const loser = next.player1 <= 0 ? "player1" : next.player2 <= 0 ? "player2" : null;
