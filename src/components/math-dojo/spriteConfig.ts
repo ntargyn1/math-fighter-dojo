@@ -42,31 +42,17 @@ export interface CharacterSprites {
 
 export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
   alan: {
-    idle: strip(alanIdle.url, 2, true),
+    idle: strip(alanIdle.url, 6, true),
     jab: strip(alanJab.url, 14, false),
     cross: strip(alanCross.url, 12, false),
     uppercut: strip(alanUppercut.url, 11, false),
     block: strip(alanBlock.url, 10, true),
   },
   bayan: {
-    idle: strip(bayanIdle.url, 2, true),
+    idle: strip(bayanIdle.url, 6, true),
     jab: strip(bayanJab.url, 14, false),
     cross: strip(bayanCross.url, 12, false),
     uppercut: strip(bayanUppercut.url, 11, false),
     block: strip(bayanBlock.url, 10, true),
   },
 };
-
-const preloaded: HTMLImageElement[] = [];
-/** Fetch every strip once so none is blank on first display. */
-export function preloadSprites() {
-  if (preloaded.length || typeof window === "undefined") return;
-  for (const c of Object.values(CHARACTERS)) {
-    for (const s of Object.values(c)) {
-      if (!s) continue;
-      const img = new Image();
-      img.src = s.src;
-      preloaded.push(img);
-    }
-  }
-}
