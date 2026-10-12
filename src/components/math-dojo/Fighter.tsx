@@ -17,8 +17,11 @@ const BLOCK_HOLD_MS = 600;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 type Flash = "none" | "white" | "red";
-// Flash is rendered as a blend-mode overlay (not a CSS filter) so the
-// fighter's compositing layer is never torn down mid-animation.
+const FILTERS: Record<Flash, string | undefined> = {
+  none: undefined,
+  white: "brightness(2.6) saturate(0.2)",
+  red: "sepia(1) saturate(6) hue-rotate(-50deg) brightness(0.9)",
+};
 
 export function Fighter({
   state,
@@ -35,6 +38,7 @@ export function Fighter({
 }) {
   const controls = useAnimationControls();
   const sprites = CHARACTERS[character];
+  const [playId, setPlayId] = useState(0);
   const [flash, setFlash] = useState<Flash>("none");
   const [frozen, setFrozen] = useState(false);
   // Which strip is visible; hit/ko keep the previous strip when no real strip exists.
@@ -54,6 +58,7 @@ export function Fighter({
     };
     const show = (s: StripConfig) => {
       setStrip(s);
+      setPlayId((n) => n + 1);
     };
     (async () => {
       controls.stop();
@@ -68,21 +73,12 @@ export function Fighter({
         case "uppercut": {
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
-          // No horizontal lunge: fighters stay rooted in their slots.
-          // The punch reads entirely from the sprite strip frames.
-          if (state === "uppercut") {
-            await controls.start({ y: -8, transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
-          }
-          if (!alive) {
-            controls.set({ x: 0, y: 0, rotate: 0 });
-            return;
-          }
+          const dist = state === "uppercut" ? 56 : state === "cross" ? 46 : 36;
+          await controls.start({ x: dist * d, y: state === "uppercut" ? -8 : 0, transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
+          if (!alive) return;
           await freeze();
-          if (!alive) {
-            controls.set({ x: 0, y: 0, rotate: 0 });
-            return;
-          }
-          controls.set({ x: 0, y: 0, rotate: 0 });
+          if (!alive) return;
+          await controls.start({ x: 0, y: 0, transition: { duration: 0.15, ease: "easeOut" } });
           await finished; // strip plays exactly once
           if (!alive) return;
           show(sprites.idle);
@@ -93,22 +89,17 @@ export function Fighter({
           setFlash("white");
           controls.set({ scaleY: 0.9, y: 0 });
           await freeze();
-          if (!alive) {
-            controls.set({ x: 0, y: 0, rotate: 0, scaleY: 1 });
-            return;
-          }
+          if (!alive) return;
           setFlash("red");
-          // No sideways knockback: squash + flash carry the impact.
-          // (Horizontal knockback was stranding fighters off their slots.)
-          await controls.start({ scaleY: 1, transition: { duration: 0.2, ease: "easeOut" } });
-          controls.set({ x: 0, y: 0, rotate: 0, scaleY: 1 });
+          await controls.start({ x: [0, -30 * d, -24 * d, -32 * d, -28 * d], scaleY: 1, transition: { duration: 0.2, ease: "easeOut" } });
           if (alive) setFlash("none");
+          await controls.start({ x: 0, transition: { duration: 0.15 } });
           if (!alive) return;
           show(sprites.idle);
           return done();
         case "block":
           show(sprites.block);
-          await controls.start({ scaleY: [1, 0.95, 0.95, 1], y: 0, transition: { duration: BLOCK_HOLD_MS / 1000, times: [0, 0.15, 0.85, 1] } });
+          await controls.start({ x: [0, -8 * d, -8 * d, 0], scaleY: [1, 0.95, 0.95, 1], y: 0, transition: { duration: BLOCK_HOLD_MS / 1000, times: [0, 0.15, 0.85, 1] } });
           if (!alive) return;
           show(sprites.idle);
           return done();
@@ -116,10 +107,10 @@ export function Fighter({
           if (sprites.ko) show(sprites.ko);
           setFrozen(true); // interrupt current strip on its current frame
           setFlash("red");
-          await controls.start({ rotate: -8 * d, transition: { duration: 0.1, ease: "easeOut" } });
+          await controls.start({ x: -18 * d, rotate: -8 * d, transition: { duration: 0.1, ease: "easeOut" } });
           if (!alive) return;
           setFlash("none");
-          await controls.start({ rotate: -90 * d, y: 6, transition: { duration: 0.45, ease: "easeIn" } });
+          await controls.start({ rotate: -90 * d, x: -30 * d, y: 6, transition: { duration: 0.45, ease: "easeIn" } });
           if (!alive) return;
           await controls.start({ y: [6, -8, 6, 2, 6], transition: { duration: 0.35, ease: "easeOut" } });
           return done(); // stays lying down until state returns to idle
@@ -128,11 +119,6 @@ export function Fighter({
     return () => {
       alive = false;
       setFrozen(false);
-      controls.stop();
-      // If the animation was interrupted mid-flight (e.g. knockback cut short by
-      // the next state), snap back to the neutral spot so the fighter can never
-      // drift off-screen. The newly started state then animates from a clean base.
-      controls.set({ x: 0, y: 0, rotate: 0, scaleY: 1, opacity: 1 });
     };
   }, [state, controls, sprites, d]);
 
@@ -141,20 +127,10 @@ export function Fighter({
       <motion.div
         animate={controls}
         className="relative w-[160%] max-w-none shrink-0"
-        style={{ aspectRatio: `${strip.frameWidth} / ${strip.frameHeight}`, originY: 1, originX: 0.5 }}
+        style={{ aspectRatio: `${strip.frameWidth} / ${strip.frameHeight}`, originY: 1, originX: 0.5, filter: FILTERS[flash] }}
         data-fighter-state={state}
       >
-        <SpriteStrip key={strip.src} strip={strip} mirrored={facing === "left"} paused={frozen} onDone={() => stripDone.current()} />
-        {flash !== "none" && (
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              backgroundColor: flash === "white" ? "#ffffff" : "#ef4444",
-              opacity: flash === "white" ? 0.65 : 0.3,
-              mixBlendMode: "overlay",
-            }}
-          />
-        )}
+        <SpriteStrip key={playId} strip={strip} mirrored={facing === "left"} paused={frozen} onDone={() => stripDone.current()} />
       </motion.div>
     </div>
   );
@@ -174,8 +150,8 @@ function SpriteStrip({ strip, mirrored, paused, onDone }: { strip: StripConfig; 
           backgroundImage: `url(${strip.src})`,
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
-          ["--sprite-end" as string]: "-100%",
-          animation: `dojo-sprite ${ms}ms steps(${n}, jump-none) ${strip.loop ? "infinite" : "1"}`,
+          ["--sprite-end" as string]: `${(-100 * (n - 1)) / n}%`,
+          animation: `dojo-sprite ${ms}ms steps(${n}, jump-none) ${strip.loop ? "infinite" : "1 forwards"}`,
           animationPlayState: paused ? "paused" : "running",
         }}
       />
