@@ -150,7 +150,7 @@ function SpriteStrip({ strip, mirrored, paused, onDone }: { strip: StripConfig; 
           backgroundImage: `url(${strip.src})`,
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
-          ["--sprite-end" as string]: `${(-100 * (n - 1)) / n}%`,
+          ["--sprite-end" as string]: "-100%",
           animation: `dojo-sprite ${ms}ms steps(${n}, jump-none) ${strip.loop ? "infinite" : "1 forwards"}`,
           animationPlayState: paused ? "paused" : "running",
         }}
