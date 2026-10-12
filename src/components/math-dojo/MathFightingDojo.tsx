@@ -32,9 +32,9 @@ export const questionTime = (level: number) => Math.max(5, 11 - clampLevel(level
 const FAST_ANSWER_THRESHOLD = 2; // seconds
 const FAST_MULTIPLIER = 1.5;
 const ULTIMATE_DAMAGE = 150;
-const START_NPC_HEALTH = 300;
-const START_PLAYER_HEALTH = 100;
-const TP_START_HEALTH = 100;
+const START_NPC_HEALTH = 1500;
+const START_PLAYER_HEALTH = 500;
+const TP_START_HEALTH = 500;
 
 type PunchKind = "light" | "medium" | "heavy";
 const PUNCHES: Record<
