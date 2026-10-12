@@ -50,7 +50,7 @@ function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const clampLevel = (l: number) => Math.max(1, Math.min(20, l));
+const clampLevel = (l: number) => Math.max(1, Math.min(30, l));
 
 export function levelDescription(rawLevel: number): string {
   const l = clampLevel(rawLevel);
@@ -58,7 +58,9 @@ export function levelDescription(rawLevel: number): string {
   if (l <= 5) return `Level ${l}: + and - 0–20`;
   if (l <= 10) return `Level ${l}: x2–x6 + division`;
   if (l <= 15) return `Level ${l}: x2–x10 + division`;
-  return `Level ${l}: x2–x12 + division`;
+  if (l <= 20) return `Level ${l}: x2–x12 + division`;
+  if (l <= 25) return `Level ${l}: x2–x15 + division`;
+  return `Level ${l}: x12–x20 + division`;
 }
 
 export function generateQuestion(rawLevel: number): Question {
@@ -74,9 +76,10 @@ export function generateQuestion(rawLevel: number): Question {
     const b = randInt(0, a);
     return { a, b, operator: "-", correctAnswer: a - b, level };
   }
-  const maxTable = level <= 10 ? 6 : level <= 15 ? 10 : 12;
-  const x = randInt(2, maxTable);
-  const y = randInt(2, maxTable);
+  const maxTable = level <= 10 ? 6 : level <= 15 ? 10 : level <= 20 ? 12 : level <= 25 ? 15 : 20;
+  const minFactor = level >= 26 ? 12 : 2;
+  const x = randInt(minFactor, maxTable);
+  const y = randInt(minFactor, maxTable);
   if (Math.random() < 0.5) return { a: x, b: y, operator: "×", correctAnswer: x * y, level };
   const c = x * y;
   return Math.random() < 0.5
@@ -776,7 +779,7 @@ function LevelSlider({ label, value, onChange, accent }: { label: string; value:
       <input
         type="range"
         min={1}
-        max={20}
+        max={30}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="mt-3 w-full"
@@ -1031,7 +1034,7 @@ function SettingsScreen({ level, setLevel, onHome }: { level: number; setLevel: 
       <p className="mt-1 text-sm text-foreground/70">Pick a starting level.</p>
       <div className="mt-6 w-full max-w-sm rounded-3xl bg-white/70 p-6 shadow-inner">
         <div className="text-center text-2xl font-black text-[var(--dojo-primary)]">Level {level}</div>
-        <input type="range" min={1} max={20} value={level} onChange={(e) => setLevel(Number(e.target.value))} className="mt-4 w-full" />
+        <input type="range" min={1} max={30} value={level} onChange={(e) => setLevel(Number(e.target.value))} className="mt-4 w-full" />
         <div className="mt-2 flex justify-between text-xs font-bold text-foreground/60">
           <span>1</span>
           <span>20</span>
