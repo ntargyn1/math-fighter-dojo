@@ -50,7 +50,7 @@ function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const clampLevel = (l: number) => Math.max(1, Math.min(30, l));
+const clampLevel = (l: number) => Math.max(1, Math.min(40, l));
 
 export function levelDescription(rawLevel: number): string {
   const l = clampLevel(rawLevel);
@@ -60,7 +60,9 @@ export function levelDescription(rawLevel: number): string {
   if (l <= 15) return `Level ${l}: x2–x10 + division`;
   if (l <= 20) return `Level ${l}: x2–x12 + division`;
   if (l <= 25) return `Level ${l}: x2–x15 + division`;
-  return `Level ${l}: x12–x20 + division`;
+  if (l <= 30) return `Level ${l}: x12–x20 + division`;
+  if (l <= 35) return `Level ${l}: 2-digit x 1-digit + division`;
+  return `Level ${l}: 2-digit x 2-digit + division`;
 }
 
 export function generateQuestion(rawLevel: number): Question {
@@ -76,10 +78,18 @@ export function generateQuestion(rawLevel: number): Question {
     const b = randInt(0, a);
     return { a, b, operator: "-", correctAnswer: a - b, level };
   }
-  const maxTable = level <= 10 ? 6 : level <= 15 ? 10 : level <= 20 ? 12 : level <= 25 ? 15 : 20;
-  const minFactor = level >= 26 ? 12 : 2;
-  const x = randInt(minFactor, maxTable);
-  const y = randInt(minFactor, maxTable);
+  // Factor ranges per band. Levels 1–30 keep their classic single ranges;
+  // 31–35 mix two-digit × one-digit, 36–40 two-digit × two-digit.
+  let loX = 2, hiX = 6, loY = 2, hiY = 6;
+  if (level <= 10) { hiX = hiY = 6; }
+  else if (level <= 15) { hiX = hiY = 10; }
+  else if (level <= 20) { hiX = hiY = 12; }
+  else if (level <= 25) { hiX = hiY = 15; }
+  else if (level <= 30) { loX = loY = 12; hiX = hiY = 20; }
+  else if (level <= 35) { loX = 12; hiX = 99; loY = 2; hiY = 9; }
+  else { loX = loY = 12; hiX = hiY = 30; }
+  const x = randInt(loX, hiX);
+  const y = randInt(loY, hiY);
   if (Math.random() < 0.5) return { a: x, b: y, operator: "×", correctAnswer: x * y, level };
   const c = x * y;
   return Math.random() < 0.5
@@ -779,7 +789,7 @@ function LevelSlider({ label, value, onChange, accent }: { label: string; value:
       <input
         type="range"
         min={1}
-        max={30}
+        max={40}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="mt-3 w-full"
@@ -1034,7 +1044,7 @@ function SettingsScreen({ level, setLevel, onHome }: { level: number; setLevel: 
       <p className="mt-1 text-sm text-foreground/70">Pick a starting level.</p>
       <div className="mt-6 w-full max-w-sm rounded-3xl bg-white/70 p-6 shadow-inner">
         <div className="text-center text-2xl font-black text-[var(--dojo-primary)]">Level {level}</div>
-        <input type="range" min={1} max={30} value={level} onChange={(e) => setLevel(Number(e.target.value))} className="mt-4 w-full" />
+        <input type="range" min={1} max={40} value={level} onChange={(e) => setLevel(Number(e.target.value))} className="mt-4 w-full" />
         <div className="mt-2 flex justify-between text-xs font-bold text-foreground/60">
           <span>1</span>
           <span>20</span>
