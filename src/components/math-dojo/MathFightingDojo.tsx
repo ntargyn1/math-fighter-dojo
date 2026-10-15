@@ -553,6 +553,7 @@ function QuestionCard({
   question,
   options,
   timeRemaining,
+  timerTotal,
   timerColor,
   onAnswer,
   disabled,
