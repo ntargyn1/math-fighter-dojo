@@ -4,6 +4,7 @@ import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState, type AttackMove } from "./Fighter";
+import { BOSSES, defeatBoss, loadUnlocked, type BossDef } from "./campaign";
 
 type Screen =
   | "home"
@@ -13,6 +14,8 @@ type Screen =
   | "defeat"
   | "two-player"
   | "two-player-result"
+  | "campaign"
+  | "campaign-battle"
   | "settings";
 export type Operator = "+" | "-" | "×" | "÷";
 type PlayerId = "player1" | "player2";
@@ -25,6 +28,8 @@ export interface Question {
   operator: Operator;
   correctAnswer: number;
   level: number;
+  /** Free-text prompt (campaign bosses). When set, shown instead of "a op b = ?". */
+  prompt?: string;
 }
 
 const QUESTION_TIME = 10;
@@ -262,13 +267,67 @@ function StarBurst({ side }: { side: Side }) {
   );
 }
 
-function FighterSlot({ fx, side, color }: { fx: FightFx; side: Side; color: string }) {
+/** Emoji boss fighter: driven by the same FighterState machine as sprite fighters. */
+function BossFighter({
+  emoji,
+  state,
+  onAnimationEnd,
+}: {
+  emoji: string;
+  state: FighterState;
+  onAnimationEnd?: (s: FighterState) => void;
+}) {
+  const controls = useAnimationControls();
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      controls.stop();
+      if (state === "idle") {
+        // Endless bob; never completes — the next state change restarts this effect.
+        void controls.start({ y: [0, -12, 0], transition: { repeat: Infinity, duration: 1.8, ease: "easeInOut" } });
+        return;
+      }
+      if (state === "ko") {
+        await controls.start({ rotate: -90, y: 60, opacity: 0.5, transition: { duration: 0.5, ease: "easeIn" } });
+      } else if (state === "hit") {
+        await controls.start({ x: [0, -22, 16, -10, 0], transition: { duration: 0.35 } });
+      } else if (state === "block") {
+        await controls.start({ scale: [1, 0.8, 1], transition: { duration: 0.5 } });
+      } else {
+        // jab | cross | uppercut — lunge toward the player (left)
+        const lunge = state === "uppercut" ? { x: -36, y: -16 } : { x: -40, y: 0 };
+        await controls.start({ ...lunge, transition: { duration: 0.12, ease: "easeIn" } });
+        await controls.start({ x: 0, y: 0, transition: { duration: 0.2, ease: "easeOut" } });
+      }
+      if (alive) onAnimationEnd?.(state);
+    })();
+    return () => {
+      alive = false;
+    };
+    // onAnimationEnd intentionally omitted: it is stable enough (uses refs) and
+    // including it would restart animations on every parent render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, controls, emoji]);
+  return (
+    <div className="flex h-full w-full items-end justify-center">
+      <motion.div animate={controls} className="text-8xl leading-none" style={{ originY: 1 }}>
+        {emoji}
+      </motion.div>
+    </div>
+  );
+}
+
+function FighterSlot({ fx, side, color, bossEmoji }: { fx: FightFx; side: Side; color: string; bossEmoji?: string }) {
   // Left fighter (bottom) faces right; right fighter (top) is mirrored to face left.
   const flipped = side === "top";
   return (
     <div className="relative flex h-full w-[38%] items-end justify-center">
       <div className="h-[85%] w-full">
-        <Fighter state={fx.states[side]} facing={flipped ? "left" : "right"} character={flipped ? "bayan" : "alan"} color={color} onAnimationEnd={(s) => fx.onEnd(side, s)} />
+        {bossEmoji && flipped ? (
+          <BossFighter emoji={bossEmoji} state={fx.states[side]} onAnimationEnd={(s) => fx.onEnd(side, s)} />
+        ) : (
+          <Fighter state={fx.states[side]} facing={flipped ? "left" : "right"} character={flipped ? "bayan" : "alan"} color={color} onAnimationEnd={(s) => fx.onEnd(side, s)} />
+        )}
       </div>
       {fx.bursts
         .filter((b) => b.side === side)
@@ -301,11 +360,13 @@ function Arena({
   leftColor,
   rightColor,
   banner,
+  bossEmoji,
 }: {
   fx: FightFx;
   leftColor: string;
   rightColor: string;
   banner?: React.ReactNode;
+  bossEmoji?: string;
 }) {
   return (
     <div className="relative flex h-[40vh] min-h-56 w-full items-end justify-between overflow-hidden rounded-3xl bg-white/50 px-2 pb-3 shadow-inner">
@@ -315,7 +376,7 @@ function Arena({
       <div className="mb-[18%] shrink-0 rounded-full bg-[var(--dojo-accent)] px-2 py-1 text-xs font-black text-[var(--dojo-accent-foreground)] shadow">
         VS
       </div>
-      <FighterSlot fx={fx} side="top" color={rightColor} />
+      <FighterSlot fx={fx} side="top" color={rightColor} bossEmoji={bossEmoji} />
     </div>
   );
 }
@@ -502,6 +563,7 @@ function QuestionCard({
   question: Question;
   options: number[];
   timeRemaining: number;
+  timerTotal: number | null;
   timerColor: string;
   onAnswer: (v: number) => void;
   disabled?: boolean;
@@ -509,9 +571,9 @@ function QuestionCard({
   headerText?: string;
   flash?: string | null;
 }) {
-  const total = questionTime(question.level);
-  const timerPct = (timeRemaining / total) * 100;
-  const isFastWindow = total - timeRemaining <= FAST_ANSWER_THRESHOLD;
+  const timerPct = timerTotal ? (timeRemaining / timerTotal) * 100 : 0;
+  const isFastWindow =
+    timerTotal == null ? timeRemaining <= FAST_ANSWER_THRESHOLD : timerTotal - timeRemaining <= FAST_ANSWER_THRESHOLD;
   return (
     <div className="relative flex w-full flex-col items-center gap-2 rounded-3xl bg-white/70 p-3 shadow-inner">
       <AnimatePresence>
@@ -527,16 +589,21 @@ function QuestionCard({
         )}
       </AnimatePresence>
       <div className="w-full">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div className="h-full transition-all" style={{ width: `${timerPct}%`, backgroundColor: timerColor }} />
-        </div>
+        {timerTotal != null ? (
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full transition-all" style={{ width: `${timerPct}%`, backgroundColor: timerColor }} />
+          </div>
+        ) : (
+          <div className="text-center text-xs font-black text-[var(--dojo-accent)]">🐢 No timer — take your time!</div>
+        )}
         <div className="mt-1 text-center text-xs font-bold text-foreground/70">
-          {timeRemaining.toFixed(1)}s{isFastWindow && !disabled ? " • ⚡ FAST!" : ""}
+          {timerTotal != null && `${timeRemaining.toFixed(1)}s`}
+          {isFastWindow && !disabled ? " • ⚡ FAST!" : ""}
           {headerText ? ` • ${headerText}` : ""}
         </div>
       </div>
       <div className="text-4xl font-black text-[var(--dojo-primary)]">
-        {question.a} {question.operator} {question.b} = ?
+        {question.prompt ?? `${question.a} ${question.operator} ${question.b} = ?`}
       </div>
       <div className="grid w-full grid-cols-3 gap-2">
         {options.map((opt) => (
@@ -556,15 +623,18 @@ function useRound() {
   const [question, setQuestion] = useState<Question>(() => generateQuestion(1));
   const [options, setOptions] = useState<number[]>([]);
   const [timeRemaining, setTimeRemaining] = useState(QUESTION_TIME);
+  const [timerTotal, setTimerTotal] = useState<number | null>(QUESTION_TIME);
   const startRef = useRef(Date.now());
   const timeoutRef = useRef<() => void>(() => {});
 
-  const begin = (p: PunchKind, level: number) => {
-    const q = generateQuestion(level + PUNCHES[p].levelShift);
+  const begin = (p: PunchKind, level: number, custom?: { q: Question; timerSec: number | null }) => {
+    const q = custom?.q ?? generateQuestion(level + PUNCHES[p].levelShift);
+    const total = custom ? custom.timerSec : questionTime(q.level);
     setPunch(p);
     setQuestion(q);
     setOptions(generateOptions(q.correctAnswer, q));
-    setTimeRemaining(questionTime(q.level));
+    setTimerTotal(total);
+    setTimeRemaining(total ?? 0);
     startRef.current = Date.now();
     setPhase("question");
   };
@@ -572,17 +642,22 @@ function useRound() {
   useEffect(() => {
     if (phase !== "question") return;
     const id = setInterval(() => {
-      const remaining = questionTime(question.level) - (Date.now() - startRef.current) / 1000;
-      if (remaining <= 0) {
-        setTimeRemaining(0);
-        timeoutRef.current();
-      } else setTimeRemaining(remaining);
+      const elapsed = (Date.now() - startRef.current) / 1000;
+      if (timerTotal == null) {
+        setTimeRemaining(elapsed); // count up, no timeout
+      } else {
+        const remaining = timerTotal - elapsed;
+        if (remaining <= 0) {
+          setTimeRemaining(0);
+          timeoutRef.current();
+        } else setTimeRemaining(remaining);
+      }
     }, 100);
     return () => clearInterval(id);
-  }, [phase, question]);
+  }, [phase, question, timerTotal]);
 
   const elapsed = () => (Date.now() - startRef.current) / 1000;
-  return { phase, setPhase, punch, question, options, timeRemaining, begin, elapsed, timeoutRef };
+  return { phase, setPhase, punch, question, options, timeRemaining, timerTotal, begin, elapsed, timeoutRef };
 }
 
 function useMounted() {
@@ -618,12 +693,14 @@ function HomeScreen({
   onPlay,
   onTwoPlayer,
   onTrain,
+  onCampaign,
   onSettings,
 }: {
   wins: number;
   onPlay: () => void;
   onTwoPlayer: () => void;
   onTrain: () => void;
+  onCampaign: () => void;
   onSettings: () => void;
 }) {
   return (
@@ -657,6 +734,9 @@ function HomeScreen({
         <BigButton onClick={onPlay} variant="primary">
           ▶ Single Battle
         </BigButton>
+        <BigButton onClick={onCampaign} variant="primary">
+          🗺️ Boss Campaign
+        </BigButton>
         <BigButton onClick={onTwoPlayer} variant="p2">
           👥 Two Players
         </BigButton>
@@ -679,15 +759,18 @@ function BattleScreen({
   onVictory,
   onDefeat,
   onHome,
+  boss,
 }: {
   level: number;
   wins: number;
   onVictory: () => void;
   onDefeat: () => void;
   onHome: () => void;
+  /** Campaign boss. When set: questions/timer/HP come from the boss def. */
+  boss?: BossDef;
 }) {
   const [playerHealth, setPlayerHealth] = useState(START_PLAYER_HEALTH);
-  const [npcHealth, setNpcHealth] = useState(START_NPC_HEALTH);
+  const [npcHealth, setNpcHealth] = useState(boss?.hp ?? START_NPC_HEALTH);
   const [streak, setStreak] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const round = useRound();
@@ -747,19 +830,23 @@ function BattleScreen({
       <div className="flex justify-center">
         <BeltBadge wins={wins} />
       </div>
-      <HealthBar value={npcHealth} max={START_NPC_HEALTH} color="var(--dojo-danger)" label="👹 Boss" />
+      <HealthBar value={npcHealth} max={boss?.hp ?? START_NPC_HEALTH} color="var(--dojo-danger)" label={boss ? `${boss.emoji} ${boss.name}` : "👹 Boss"} />
 
-      <Arena fx={fx} leftColor="var(--dojo-primary)" rightColor="var(--dojo-danger)" />
+      <Arena fx={fx} leftColor="var(--dojo-primary)" rightColor="var(--dojo-danger)" bossEmoji={boss?.emoji} />
 
       <div className="flex flex-1 flex-col items-center justify-end gap-2">
         <FastMeter streak={streak} />
         {round.phase === "choose" ? (
-          <PunchPicker title={`Choose your punch! (Level ${level})`} onPick={(p) => round.begin(p, level)} />
+          <PunchPicker
+            title={boss ? `Choose your punch!` : `Choose your punch! (Level ${level})`}
+            onPick={(p) => (boss ? round.begin(p, 0, { q: boss.gen(), timerSec: boss.timerSec }) : round.begin(p, level))}
+          />
         ) : (
           <QuestionCard
             question={round.question}
             options={round.options}
             timeRemaining={round.timeRemaining}
+            timerTotal={round.timerTotal}
             timerColor="var(--dojo-primary)"
             onAnswer={(v) => void finish(v === round.question.correctAnswer)}
             disabled={round.phase !== "question"}
@@ -774,6 +861,52 @@ function BattleScreen({
         Back to home
       </button>
     </motion.div>
+  );
+}
+
+// ---------- Boss Campaign ----------
+
+function CampaignScreen({ onBack, onSelect }: { onBack: () => void; onSelect: (index: number) => void }) {
+  const [unlocked] = useState(loadUnlocked);
+  return (
+    <div className="flex min-h-screen flex-col items-center gap-4 bg-[var(--dojo-bg)] px-6 py-8">
+      <div className="flex flex-col items-center gap-1 pt-4">
+        <div className="text-5xl">🗺️</div>
+        <h1 className="text-center text-3xl font-black text-[var(--dojo-primary)]">Boss Campaign</h1>
+        <p className="text-center text-sm text-foreground/70">Defeat each boss to unlock the next!</p>
+      </div>
+      <div className="flex w-full max-w-sm flex-col gap-3">
+        {BOSSES.map((b, i) => {
+          const locked = i > unlocked;
+          const done = i < unlocked;
+          return (
+            <button
+              key={b.id}
+              type="button"
+              disabled={locked}
+              onClick={() => onSelect(i)}
+              className={`flex items-center gap-4 rounded-2xl p-4 text-left shadow-lg transition-transform ${
+                locked ? "bg-muted opacity-50" : "bg-white active:scale-95"
+              }`}
+            >
+              <span className="text-5xl">{locked ? "🔒" : b.emoji}</span>
+              <span>
+                <span className="block text-lg font-black text-foreground">
+                  {i + 1}. {b.name} {done ? "✅" : ""}
+                </span>
+                <span className="block text-sm text-foreground/70">{b.tagline}</span>
+                <span className="block text-xs font-bold text-foreground/50">
+                  HP {b.hp} • {b.timerSec ? `⏱ ${b.timerSec}s per question` : "🐢 no timer"}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" onClick={onBack} className="text-sm font-bold text-foreground/60 underline">
+        Back to home
+      </button>
+    </div>
   );
 }
 
@@ -913,6 +1046,7 @@ function TwoPlayerBattleScreen({
             question={round.question}
             options={round.options}
             timeRemaining={round.timeRemaining}
+            timerTotal={round.timerTotal}
             timerColor={p === "player1" ? "#0ea5e9" : "#ec4899"}
             onAnswer={(v) => void finish(v === round.question.correctAnswer)}
             disabled={round.phase !== "question"}
@@ -1082,6 +1216,7 @@ export function MathFightingDojo() {
   const [battleKey, setBattleKey] = useState(0);
   const [tpWinner, setTpWinner] = useState<PlayerId>("player1");
   const [wins, setWins] = useState(0);
+  const [campaignBoss, setCampaignBoss] = useState(0);
 
   useEffect(() => setWins(loadWins()), []);
 
@@ -1105,6 +1240,7 @@ export function MathFightingDojo() {
               onPlay={startBattle}
               onTwoPlayer={startTwoPlayer}
               onTrain={() => setScreen("training")}
+              onCampaign={() => setScreen("campaign")}
               onSettings={() => setScreen("settings")}
             />
           )}
@@ -1134,6 +1270,29 @@ export function MathFightingDojo() {
             />
           )}
           {screen === "training" && <TrainingScreen level={currentLevel} onHome={home} />}
+          {screen === "campaign" && (
+            <CampaignScreen
+              onBack={home}
+              onSelect={(i) => {
+                setCampaignBoss(i);
+                setBattleKey((k) => k + 1);
+                setScreen("campaign-battle");
+              }}
+            />
+          )}
+          {screen === "campaign-battle" && (
+            <BattleScreen
+              level={1}
+              wins={wins}
+              boss={BOSSES[campaignBoss]}
+              onVictory={() => {
+                defeatBoss(campaignBoss);
+                setScreen("campaign");
+              }}
+              onDefeat={() => setScreen("campaign")}
+              onHome={home}
+            />
+          )}
           {screen === "settings" && <SettingsScreen level={currentLevel} setLevel={setCurrentLevel} onHome={home} />}
           {screen === "victory" && <ResultScreen kind="victory" wins={wins} onRetry={startBattle} onHome={home} />}
           {screen === "defeat" && <ResultScreen kind="defeat" wins={wins} onRetry={startBattle} onHome={home} />}
