@@ -38,13 +38,9 @@ function txt(prompt: string, correctAnswer: number): Question {
   return { a: 0, b: 0, operator: "+", correctAnswer, level: 0, prompt };
 }
 
-/** Russian plural: 1 яблоко, 3 яблока, 7 яблок. */
-function plural(n: number, one: string, few: string, many: string): string {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
-  return many;
+/** English plural: 1 apple, 3 apples. */
+function plural(n: number, one: string, many: string): string {
+  return n === 1 ? one : many;
 }
 
 // ---------- Boss 1: Slime — fluent +/- within 20, no timer ----------
@@ -113,13 +109,13 @@ function genGolem(): Question {
     // how many tens in N?
     const k = ri(12, 95);
     const n = k * 10 + ri(0, 9);
-    return txt(`Сколько десятков в числе ${n}?`, k);
+    return txt(`How many tens are in ${n}?`, k);
   }
   if (r < 0.55) {
     // how many hundreds in N?
     const k = ri(3, 25);
     const n = k * 100 + ri(0, 99);
-    return txt(`Сколько сотен в числе ${n}?`, k);
+    return txt(`How many hundreds are in ${n}?`, k);
   }
   if (r < 0.8) {
     // count by 5s
@@ -135,21 +131,18 @@ function genGolem(): Question {
 
 function genWitch(): Question {
   const isAlan = Math.random() < 0.5;
-  const kid = isAlan ? "Алан" : "Баян";
-  const nameGen = isAlan ? "Алана" : "Баян"; // У Алана / У Баян
-  const ate = isAlan ? "съел" : "съела";
-  const toKid = isAlan ? "Ему" : "Ей";
+  const kid = isAlan ? "Alan" : "Bayan";
+  const heShe = isAlan ? "He" : "She";
   const r = Math.random();
   if (r < 0.3) {
     const a = ri(15, 60);
     const b = ri(5, a - 3);
-    const item = plural(a, "яблоко", "яблока", "яблок");
-    return txt(`У ${nameGen} было ${a} ${item}. ${kid} ${ate} ${b}. Сколько осталось?`, a - b);
+    return txt(`${kid} had ${a} ${plural(a, "apple", "apples")}. ${heShe} ate ${b}. How many are left?`, a - b);
   }
   if (r < 0.55) {
     const a = ri(12, 50);
     const b = ri(8, 40);
-    return txt(`Алан собрал ${a} ${plural(a, "гриб", "гриба", "грибов")}, а Баян — ${b} ${plural(b, "гриб", "гриба", "грибов")}. Сколько всего?`, a + b);
+    return txt(`Alan picked ${a} ${plural(a, "mushroom", "mushrooms")} and Bayan picked ${b} ${plural(b, "mushroom", "mushrooms")}. How many in all?`, a + b);
   }
   if (r < 0.8) {
     const a = ri(20, 60);
@@ -157,11 +150,11 @@ function genWitch(): Question {
     const c = ri(3, 15);
     const total = a + b - c;
     if (total < 0 || total > 100) return genWitch();
-    return txt(`В корзине было ${a} ${plural(a, "мяч", "мяча", "мячей")}. Принесли ещё ${b}, а потом забрали ${c}. Сколько стало?`, total);
+    return txt(`There ${a === 1 ? "was" : "were"} ${a} ${plural(a, "ball", "balls")} in the basket. They brought ${b} more, then took ${c} away. How many are there now?`, total);
   }
   const a = ri(15, 70);
   const b = ri(6, 30);
-  return txt(`У ${nameGen} было ${a} ${plural(a, "наклейка", "наклейки", "наклеек")}. ${toKid} подарили ещё ${b}. Сколько стало?`, a + b);
+  return txt(`${kid} had ${a} ${plural(a, "sticker", "stickers")}. ${heShe} was given ${b} more. How many ${heShe === "He" ? "does he have" : "does she have"} now?`, a + b);
 }
 
 // ---------- Boss 5: Dragon — everything mixed + time & money, timer 20s ----------
@@ -172,29 +165,29 @@ function genTime(): Question {
   const r = Math.random();
   if (r < 0.4) {
     const h = ri(2, 5);
-    return txt(`Сколько минут в ${h} ${plural(h, "часе", "часах", "часах")}?`, h * 60);
+    return txt(`How many minutes are in ${h} ${plural(h, "hour", "hours")}?`, h * 60);
   }
   if (r < 0.75) {
     const h = ri(1, 3);
     const m = pick([15, 30, 45] as const);
-    return txt(`${h} ${plural(h, "час", "часа", "часов")} ${m} минут — это сколько минут?`, h * 60 + m);
+    return txt(`${h} ${plural(h, "hour", "hours")} ${m} minutes — how many minutes is that?`, h * 60 + m);
   }
-  return txt(`Полтора часа — это сколько минут?`, 90);
+  return txt(`How many minutes are in an hour and a half?`, 90);
 }
 
 function genMoney(): Question {
   const r = Math.random();
   if (r < 0.35) {
     const n = ri(2, 4);
-    return txt(`Сколько центов в ${n} ${plural(n, "четвертаке", "четвертаках", "четвертаках")}?`, n * 25);
+    return txt(`How many cents are in ${n} ${plural(n, "quarter", "quarters")}?`, n * 25);
   }
   if (r < 0.65) {
     const n = ri(2, 9);
-    return txt(`Сколько центов в ${n} ${plural(n, "дайме", "даймах", "даймах")}?`, n * 10);
+    return txt(`How many cents are in ${n} ${plural(n, "dime", "dimes")}?`, n * 10);
   }
   const a = ri(2, 6);
   const b = ri(1, 9);
-  return txt(`${a} ${plural(a, "никель", "никеля", "никелей")} и ${b} ${plural(b, "пенни", "пенни", "пенни")} — это сколько центов?`, a * 5 + b);
+  return txt(`${a} ${plural(a, "nickel", "nickels")} and ${b} ${plural(b, "penny", "pennies")} — how many cents is that?`, a * 5 + b);
 }
 
 function genDragon(): Question {
@@ -207,11 +200,11 @@ function genDragon(): Question {
 // ---------- boss roster ----------
 
 export const BOSSES: BossDef[] = [
-  { id: "slime", name: "Слайм", emoji: "🟢", tagline: "Беглый счёт до 20", hp: 300, timerSec: null, gen: genSlime },
-  { id: "zombie", name: "Зомби", emoji: "🧟", tagline: "Счёт до 100", hp: 450, timerSec: null, gen: genZombie },
-  { id: "golem", name: "Голем", emoji: "🗿", tagline: "Разряды: десятки и сотни", hp: 600, timerSec: 20, gen: genGolem },
-  { id: "witch", name: "Ведьма", emoji: "🧙", tagline: "Задачки в 1–2 действия", hp: 750, timerSec: 30, gen: genWitch },
-  { id: "dragon", name: "Дракон", emoji: "🐉", tagline: "Финал: всё + время и деньги", hp: 1000, timerSec: 20, gen: genDragon },
+  { id: "slime", name: "Slime", emoji: "🟢", tagline: "Quick math to 20", hp: 300, timerSec: null, gen: genSlime },
+  { id: "zombie", name: "Zombie", emoji: "🧟", tagline: "Counting to 100", hp: 450, timerSec: null, gen: genZombie },
+  { id: "golem", name: "Golem", emoji: "🗿", tagline: "Place value: tens and hundreds", hp: 600, timerSec: 20, gen: genGolem },
+  { id: "witch", name: "Witch", emoji: "🧙", tagline: "1–2 step word problems", hp: 750, timerSec: 30, gen: genWitch },
+  { id: "dragon", name: "Dragon", emoji: "🐉", tagline: "Final: everything + time & money", hp: 1000, timerSec: 20, gen: genDragon },
 ];
 
 export function getBoss(id: BossId): BossDef {
