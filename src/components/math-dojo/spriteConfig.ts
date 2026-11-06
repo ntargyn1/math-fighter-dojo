@@ -32,16 +32,16 @@ export interface CharacterSprites {
 export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
   alan: {
     idle: strip("/sprites/alan-idle-v3.png", 12, true, 12),
-    jab: strip("/sprites/alan-jab-v2.png", 28, false, 12),
-    cross: strip("/sprites/alan-cross-v2.png", 24, false, 12),
-    uppercut: strip("/sprites/alan-uppercut-v2.png", 22, false, 12),
+    jab: strip("/sprites/alan-jab-v3.png", 28, false, 12),
+    cross: strip("/sprites/alan-cross-v3.png", 24, false, 12),
+    uppercut: strip("/sprites/alan-uppercut-v3.png", 22, false, 12),
     block: strip("/sprites/alan-block-v2.png", 20, true, 12),
   },
   bayan: {
     idle: strip("/sprites/bayan-idle-v3.png", 12, true, 12),
-    jab: strip("/sprites/bayan-jab-v2.png", 28, false, 12),
-    cross: strip("/sprites/bayan-cross-v2.png", 24, false, 12),
-    uppercut: strip("/sprites/bayan-uppercut-v2.png", 22, false, 12),
+    jab: strip("/sprites/bayan-jab-v3.png", 28, false, 12),
+    cross: strip("/sprites/bayan-cross-v3.png", 24, false, 12),
+    uppercut: strip("/sprites/bayan-uppercut-v3.png", 22, false, 12),
     block: strip("/sprites/bayan-block-v2.png", 20, true, 12),
   },
 };
