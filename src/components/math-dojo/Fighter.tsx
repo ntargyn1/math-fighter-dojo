@@ -38,6 +38,19 @@ export function Fighter({
 }) {
   const controls = useAnimationControls();
   const sprites = CHARACTERS[character];
+  // Preload every fighter strip once, on mount: strips otherwise load on
+  // demand at the strip swap, so the first punch renders blank (or only the
+  // top rows of a half-downloaded PNG) until its image arrives.
+  useEffect(() => {
+    Object.values(CHARACTERS).forEach((s) => {
+      Object.values(s).forEach((strip) => {
+        if (strip) {
+          const img = new Image();
+          img.src = strip.src;
+        }
+      });
+    });
+  }, []);
   const [playId, setPlayId] = useState(0);
   const [flash, setFlash] = useState<Flash>("none");
   const [frozen, setFrozen] = useState(false);
