@@ -1,11 +1,3 @@
-import alanIdle from "@/assets/fighters/alan-idle.png.asset.json";
-import alanCross from "@/assets/fighters/alan-cross.png.asset.json";
-import alanUppercut from "@/assets/fighters/alan-uppercut.png.asset.json";
-import alanBlock from "@/assets/fighters/alan-block.png.asset.json";
-import bayanIdle from "@/assets/fighters/bayan-idle.png.asset.json";
-import bayanJab from "@/assets/fighters/bayan-jab.png.asset.json";
-import bayanCross from "@/assets/fighters/bayan-cross.png.asset.json";
-import bayanUppercut from "@/assets/fighters/bayan-uppercut.png.asset.json";
 import bayanBlock from "@/assets/fighters/bayan-block.png.asset.json";
 
 /**
@@ -41,17 +33,17 @@ export interface CharacterSprites {
 
 export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
   alan: {
-    idle: strip(alanIdle.url, 6, true),
+    idle: strip("/sprites/alan-idle-v2.png", 6, true),
     jab: strip("/sprites/alan-jab-v2.png", 28, false, 12),
-    cross: strip(alanCross.url, 12, false),
-    uppercut: strip(alanUppercut.url, 11, false),
-    block: strip(alanBlock.url, 10, true),
+    cross: strip("/sprites/alan-cross-v2.png", 24, false, 12),
+    uppercut: strip("/sprites/alan-uppercut-v2.png", 22, false, 12),
+    block: strip("/sprites/alan-block-v2.png", 20, true, 12),
   },
   bayan: {
-    idle: strip(bayanIdle.url, 6, true),
-    jab: strip(bayanJab.url, 14, false),
-    cross: strip(bayanCross.url, 12, false),
-    uppercut: strip(bayanUppercut.url, 11, false),
+    idle: strip("/sprites/bayan-idle-v2.png", 6, true),
+    jab: strip("/sprites/bayan-jab-v2.png", 28, false, 12),
+    cross: strip("/sprites/bayan-cross-v2.png", 24, false, 12),
+    uppercut: strip("/sprites/bayan-uppercut-v2.png", 22, false, 12),
     block: strip(bayanBlock.url, 10, true),
   },
 };
