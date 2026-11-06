@@ -1,5 +1,4 @@
 import alanIdle from "@/assets/fighters/alan-idle.png.asset.json";
-import alanJab from "@/assets/fighters/alan-jab.png.asset.json";
 import alanCross from "@/assets/fighters/alan-cross.png.asset.json";
 import alanUppercut from "@/assets/fighters/alan-uppercut.png.asset.json";
 import alanBlock from "@/assets/fighters/alan-block.png.asset.json";
@@ -27,7 +26,7 @@ export type CharacterId = "alan" | "bayan";
 export type SpriteAnim = "idle" | "jab" | "cross" | "uppercut" | "block" | "hit" | "ko";
 
 const FRAME = { frames: 6, frameWidth: 326, frameHeight: 348 } as const;
-const strip = (src: string, fps: number, loop: boolean): StripConfig => ({ src, fps, loop, ...FRAME });
+const strip = (src: string, fps: number, loop: boolean, frames = FRAME.frames): StripConfig => ({ src, fps, loop, frames, frameWidth: FRAME.frameWidth, frameHeight: FRAME.frameHeight });
 
 export interface CharacterSprites {
   idle: StripConfig;
@@ -43,7 +42,7 @@ export interface CharacterSprites {
 export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
   alan: {
     idle: strip(alanIdle.url, 6, true),
-    jab: strip(alanJab.url, 14, false),
+    jab: strip("/sprites/alan-jab-v2.png", 28, false, 12),
     cross: strip(alanCross.url, 12, false),
     uppercut: strip(alanUppercut.url, 11, false),
     block: strip(alanBlock.url, 10, true),
