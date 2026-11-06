@@ -15,6 +15,11 @@ export const HITSTOP_MS = 100;
 export const LUNGE_MS = 120; // time from attack start until impact
 const BLOCK_HOLD_MS = 600;
 
+// Preloaded strip images are held here for the app's lifetime (see the
+// preload effect in Fighter): without a surviving reference the browser
+// may garbage-collect a loading Image and cancel its download.
+const preloadedImages: HTMLImageElement[] = [];
+
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 type Flash = "none" | "white" | "red";
 const FILTERS: Record<Flash, string | undefined> = {
@@ -41,12 +46,17 @@ export function Fighter({
   // Preload every fighter strip once, on mount: strips otherwise load on
   // demand at the strip swap, so the first punch renders blank (or only the
   // top rows of a half-downloaded PNG) until its image arrives.
+  // The Image objects are kept in a module-level array: a bare
+  // `new Image()` with no surviving reference can be garbage-collected
+  // before its download finishes (notably on phones), silently cancelling
+  // the preload and leaving the punch blank.
   useEffect(() => {
     Object.values(CHARACTERS).forEach((s) => {
       Object.values(s).forEach((strip) => {
         if (strip) {
           const img = new Image();
           img.src = strip.src;
+          preloadedImages.push(img);
         }
       });
     });
