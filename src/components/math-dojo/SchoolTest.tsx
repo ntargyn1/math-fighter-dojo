@@ -24,6 +24,7 @@ const shuffle = <T,>(arr: T[]): T[] => {
   return a;
 };
 const tens = (n: number) => Math.floor(n / 10) * 10;
+const tensDigit = (n: number) => Math.floor(n / 10);
 const ones = (n: number) => n % 10;
 
 const KIDS = ["Alan", "Bayan", "Mia", "Noah", "Leo", "Emma", "Sam", "Ava"] as const;
@@ -104,7 +105,7 @@ function genTyler(): SchoolProblem {
     const a = ri(42, 95);
     const b = ri(16, a - 5);
     if (ones(a) >= ones(b) || ones(a) === 0) continue;
-    const wrong = (tens(a) - tens(b)) * 10 + (ones(b) - ones(a));
+    const wrong = (tensDigit(a) - tensDigit(b)) * 10 + (ones(b) - ones(a));
     const right = a - b;
     if (wrong > 0 && wrong !== right) return { kind: "tyler", name: kid(), a, b, wrong };
   }
