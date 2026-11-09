@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
+import { SchoolTestScreen } from "./SchoolTest";
 import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState, type AttackMove } from "./Fighter";
 import { BOSSES, defeatBoss, loadUnlocked, type BossDef } from "./campaign";
 
@@ -16,6 +17,7 @@ type Screen =
   | "two-player-result"
   | "campaign"
   | "campaign-battle"
+  | "school-test"
   | "settings";
 export type Operator = "+" | "-" | "×" | "÷";
 type PlayerId = "player1" | "player2";
@@ -695,6 +697,7 @@ function HomeScreen({
   onTwoPlayer,
   onTrain,
   onCampaign,
+  onSchoolTest,
   onSettings,
 }: {
   wins: number;
@@ -702,6 +705,7 @@ function HomeScreen({
   onTwoPlayer: () => void;
   onTrain: () => void;
   onCampaign: () => void;
+  onSchoolTest: () => void;
   onSettings: () => void;
 }) {
   return (
@@ -740,6 +744,9 @@ function HomeScreen({
         </BigButton>
         <BigButton onClick={onTwoPlayer} variant="p2">
           👥 Two Players
+        </BigButton>
+        <BigButton onClick={onSchoolTest} variant="answer">
+          📝 School Test
         </BigButton>
         <BigButton onClick={onTrain} variant="secondary">
           🧠 Training
@@ -1242,6 +1249,7 @@ export function MathFightingDojo() {
               onTwoPlayer={startTwoPlayer}
               onTrain={() => setScreen("training")}
               onCampaign={() => setScreen("campaign")}
+              onSchoolTest={() => setScreen("school-test")}
               onSettings={() => setScreen("settings")}
             />
           )}
@@ -1271,6 +1279,7 @@ export function MathFightingDojo() {
             />
           )}
           {screen === "training" && <TrainingScreen level={currentLevel} onHome={home} />}
+          {screen === "school-test" && <SchoolTestScreen onHome={home} />}
           {screen === "campaign" && (
             <CampaignScreen
               onBack={home}
