@@ -119,7 +119,10 @@ export function Fighter({
         case "uppercut": {
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
-          const dist = state === "uppercut" ? 56 : state === "kick" ? 46 : 36;
+          // Kick lunges only 16px (not 46 like cross): the kick strip is wide
+          // (leg extended) and the 46px lunge carried the foot past the arena
+          // centre, where the slot clips it — the leg was sliced at the seam.
+          const dist = state === "uppercut" ? 56 : state === "kick" ? 16 : 36;
           await controls.start({ x: dist * d, y: state === "uppercut" ? -8 : 0, transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
           if (!alive) return;
           await freeze();
@@ -196,15 +199,12 @@ function SpriteStrip({ strip, mirrored, paused, onDone }: { strip: StripConfig; 
           backgroundImage: `url(${strip.src})`,
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
-          // End at -100% (not -(n-1)/n): with steps(n, jump-none) the displayed
-          // shifts are k/n of the end, so only -100% lands exactly on frame
-          // boundaries (-k frame widths). The old -(n-1)/n end drifted 1/n of
-          // a frame per step — invisible on 12-frame strips (neighbouring
-          // frames look alike) but it tore the 7-frame kick apart: each step
-          // showed two different poses side by side (stretched, smeared).
-          // Fill-forwards with jump-none holds the stepped end value, i.e.
-          // the last frame exactly — no blank past the strip.
-          ["--sprite-end" as string]: "-100%",
+          // End at -(n-1)/n — NOT -100%. The -100% "fix" (Nov 10) broke every
+          // animation live (idle/jab/intro/kick all sliced, duplicated and
+          // blanked): with steps(n, jump-none) this engine lands the shifts
+          // exactly on frame boundaries only with the -(n-1)/n end. Do not
+          // change this value on theory alone — verify live first.
+          ["--sprite-end" as string]: `${(-100 * (n - 1)) / n}%`,
           animation: `dojo-sprite ${ms}ms steps(${n}, jump-none) ${strip.loop ? "infinite" : "1 forwards"}`,
           animationPlayState: paused ? "paused" : "running",
         }}
