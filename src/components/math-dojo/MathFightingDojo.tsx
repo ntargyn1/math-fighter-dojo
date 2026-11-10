@@ -244,7 +244,7 @@ function useFightFx() {
     await wait(700);
   };
 
-  return { stage, states, onEnd, popups, bursts, ko, strike, dodge, knockOut };
+  return { stage, states, onEnd, popups, bursts, ko, strike, dodge, knockOut, play };
 }
 type FightFx = ReturnType<typeof useFightFx>;
 
@@ -785,6 +785,16 @@ function BattleScreen({
   const fx = useFightFx();
   const mounted = useMounted();
 
+  // Alan walks in once at battle start, then idle takes over (never loops).
+  const introPlayed = useRef(false);
+  useEffect(() => {
+    if (introPlayed.current) return;
+    introPlayed.current = true;
+    void fx.play("bottom", "intro");
+    // fx.play only closes over refs + setState; the fx object itself is fresh each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const finish = async (correct: boolean) => {
     if (round.phase !== "question") return;
     round.setPhase("resolving");
@@ -958,6 +968,16 @@ function TwoPlayerBattleScreen({
   const round = useRound();
   const fx = useFightFx();
   const mounted = useMounted();
+
+  // Alan (player 1, bottom) walks in once when the fight starts, then idle takes over.
+  const introPlayed = useRef(false);
+  useEffect(() => {
+    if (setup || introPlayed.current) return;
+    introPlayed.current = true;
+    void fx.play("bottom", "intro");
+    // fx.play only closes over refs + setState; the fx object itself is fresh each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setup]);
 
   const sideOf = (p: PlayerId): Side => (p === "player1" ? "bottom" : "top");
 

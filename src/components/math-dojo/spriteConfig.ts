@@ -13,13 +13,15 @@ export interface StripConfig {
 }
 
 export type CharacterId = "alan" | "bayan";
-export type SpriteAnim = "idle" | "jab" | "cross" | "uppercut" | "block" | "hit" | "ko";
+export type SpriteAnim = "idle" | "intro" | "jab" | "cross" | "uppercut" | "block" | "hit" | "ko";
 
 const FRAME = { frames: 6, frameWidth: 326, frameHeight: 348 } as const;
-const strip = (src: string, fps: number, loop: boolean, frames = FRAME.frames): StripConfig => ({ src, fps, loop, frames, frameWidth: FRAME.frameWidth, frameHeight: FRAME.frameHeight });
+const strip = (src: string, fps: number, loop: boolean, frames: number = FRAME.frames): StripConfig => ({ src, fps, loop, frames, frameWidth: FRAME.frameWidth, frameHeight: FRAME.frameHeight });
 
 export interface CharacterSprites {
   idle: StripConfig;
+  /** Optional walk-in intro: plays once at battle start, then idle takes over. */
+  intro?: StripConfig;
   jab: StripConfig;
   cross: StripConfig;
   uppercut: StripConfig;
@@ -32,6 +34,7 @@ export interface CharacterSprites {
 export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
   alan: {
     idle: strip("/sprites/alan-idle-v4.png", 12, true, 12),
+    intro: strip("/sprites/alan-intro-v1.png", 10, false, 10),
     jab: strip("/sprites/alan-jab-v5.png", 28, false, 12),
     cross: strip("/sprites/alan-cross-v4.png", 24, false, 12),
     uppercut: strip("/sprites/alan-uppercut-v4.png", 22, false, 12),
