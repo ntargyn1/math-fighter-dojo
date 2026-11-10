@@ -4,11 +4,13 @@ import { WritingPad } from "./WritingPad";
 
 /**
  * School Test — practice problems in the same format as the Grade 2 Unit 2
- * Mid-Unit Assessment: same nine problem types, same paper look (numbered
+ * Mid-Unit Assessment: same problem types, same paper look (numbered
  * problems, "Show your work.", "Solution ___"), new numbers every test.
- * The handwriting pad is scratch work, like the margin of a test — the app
- * grades the checkable part (the answer / the Yes-No choices) and shows the
- * model explanation so the child can compare it with what they wrote.
+ * Twelve kinds now: the nine from the assessment plus three from Lesson 9
+ * (start-unknown, two-step, model check). The handwriting pad is scratch
+ * work, like the margin of a test — the app grades the checkable part (the
+ * answer / the Yes-No choices) and shows the model explanation so the child
+ * can compare it with what they wrote.
  */
 
 // ---------- helpers ----------
@@ -44,7 +46,10 @@ type SchoolProblem =
   | { kind: "word-sub"; name: string; item: string; a: number; b: number }
   | { kind: "missing"; start: number; end: number; item: string }
   | { kind: "word-mc"; a: number; b: number; options: number[] }
-  | { kind: "strategy"; a: number; b: number };
+  | { kind: "strategy"; a: number; b: number }
+  | { kind: "start-unknown"; mode: "add" | "sub"; total: number; b: number; item: string; name: string }
+  | { kind: "two-step"; a: number; b: number; c: number; item: string; name: string }
+  | { kind: "model-check"; total: number; part: number; correct: boolean; name: string; item: string };
 
 type AnswerState =
   | { kind: "decompose"; selected: number[] }
@@ -57,6 +62,7 @@ function defaultAnswer(p: SchoolProblem): AnswerState {
     case "decompose":
       return { kind: "decompose", selected: [] };
     case "tyler":
+    case "model-check":
       return { kind: "yesno", answer: null };
     case "yesno":
       return { kind: "table", answers: p.rows.map(() => null) };
@@ -165,8 +171,58 @@ function genStrategy(): SchoolProblem {
   return { kind: "strategy", a, b };
 }
 
+/** Lesson 9: the start is unknown. "add" = ? + b = total (more arrived);
+ * "sub" = ? − b = total (some left / hatched). */
+function genStartUnknown(): SchoolProblem {
+  const mode = Math.random() < 0.5 ? "add" : "sub";
+  if (mode === "add") {
+    for (;;) {
+      const total = ri(30, 95);
+      const b = ri(11, 29);
+      if (total - b >= 5)
+        return { kind: "start-unknown", mode: "add", total, b, item: pick(["dinosaurs", "stickers", "marbles", "seashells"] as const), name: kid() };
+    }
+  }
+  const total = ri(21, 60);
+  const b = ri(5, 28);
+  return { kind: "start-unknown", mode: "sub", total, b, item: pick(["eggs", "stickers", "marbles"] as const), name: kid() };
+}
+
+/** Lesson 9: two steps — take away twice (Regina's teeth). */
+function genTwoStep(): SchoolProblem {
+  for (;;) {
+    const a = ri(42, 95);
+    const b = ri(11, 29);
+    const c = ri(4, 15);
+    if (a - b - c >= 5)
+      return { kind: "two-step", a, b, c, item: pick(["stickers", "teeth", "marbles", "seashells"] as const), name: kid() };
+  }
+}
+
+/** Lesson 9: Elena's model — is the part-whole model drawn right? Half the
+ * time the whole and a part are swapped, like on the school sheet. */
+function genModelCheck(): SchoolProblem {
+  const total = ri(34, 92);
+  const part = ri(11, 29);
+  const correct = Math.random() < 0.5;
+  return { kind: "model-check", total, part, correct, name: kid(), item: pick(["marbles", "stickers", "seashells"] as const) };
+}
+
 function genTest(): SchoolProblem[] {
-  return [genDecompose(), genSumWork(), genTyler(), genYesNo(), genNumberline(), genWordSub(), genMissing(), genWordMc(), genStrategy()];
+  return [
+    genDecompose(),
+    genSumWork(),
+    genTyler(),
+    genYesNo(),
+    genNumberline(),
+    genWordSub(),
+    genMissing(),
+    genWordMc(),
+    genStrategy(),
+    genStartUnknown(),
+    genTwoStep(),
+    genModelCheck(),
+  ];
 }
 
 // ---------- grading ----------
@@ -244,6 +300,35 @@ function grade(p: SchoolProblem, ans: AnswerState): { correct: boolean; feedback
         ? { correct: true, feedback: `Correct answer: ${p.a + p.b}. ${model}` }
         : { correct: false, feedback: `${p.a} + ${p.b} = ${p.a + p.b}. ${model}` };
     }
+    case "start-unknown": {
+      if (ans.kind !== "number") return { correct: false, feedback: "" };
+      const answer = p.mode === "add" ? p.total - p.b : p.total + p.b;
+      const ok = Number(ans.value) === answer;
+      const how =
+        p.mode === "add"
+          ? `Work backwards: ? + ${p.b} = ${p.total}, so ? = ${p.total} − ${p.b} = ${answer}.`
+          : `Work backwards: ? − ${p.b} = ${p.total}, so ? = ${p.total} + ${p.b} = ${answer}.`;
+      return ok ? { correct: true, feedback: `Correct! ${how}` } : { correct: false, feedback: how };
+    }
+    case "two-step": {
+      if (ans.kind !== "number") return { correct: false, feedback: "" };
+      const first = p.a - p.b;
+      const answer = first - p.c;
+      const ok = Number(ans.value) === answer;
+      const how = `Do it in two steps: ${p.a} − ${p.b} = ${first}, then ${first} − ${p.c} = ${answer}.`;
+      return ok ? { correct: true, feedback: `Correct! ${how}` } : { correct: false, feedback: how };
+    }
+    case "model-check": {
+      if (ans.kind !== "yesno") return { correct: false, feedback: "" };
+      const left = p.total - p.part;
+      const why = p.correct
+        ? `${p.total} is the whole, ${p.part} is one part, and ? is what's left. ${p.total} − ${p.part} = ${left}.`
+        : `${p.total} is the whole (what ${p.name} started with), not a part. The parts are ${p.part} and ?. The right model has ${p.total} on top.`;
+      const verdict = p.correct ? "The model is correct" : "The model is wrong";
+      return ans.answer === p.correct
+        ? { correct: true, feedback: `Right — ${verdict}. ${why}` }
+        : { correct: false, feedback: `${verdict}. ${why}` };
+    }
   }
 }
 
@@ -317,6 +402,21 @@ function NumberLine({ start, jumps }: { start: number; jumps: number[] }) {
         );
       })}
     </svg>
+  );
+}
+
+/** Part-whole model: one whole box on top, two part boxes below. */
+function PartWholeModel({ whole, part1, part2 }: { whole: string; part1: string; part2: string }) {
+  const box = "flex h-12 w-24 items-center justify-center rounded-lg border-2 border-foreground/50 bg-white text-2xl font-black text-foreground";
+  return (
+    <div className="mt-3 flex flex-col items-center">
+      <div className={box}>{whole}</div>
+      <div className="h-3 w-px bg-foreground/50" />
+      <div className="flex gap-2">
+        <div className={box}>{part1}</div>
+        <div className={box}>{part2}</div>
+      </div>
+    </div>
   );
 }
 
@@ -591,9 +691,77 @@ function ProblemView({
             What strategy would you use to solve {problem.a} + {problem.b}? Explain and then solve.
           </p>
           <div className="mt-3">
-            <WritingPad label="Explain your strategy." height={150} />
+            <WritingPad label="Explain your strategy." />
           </div>
           <AnswerLine value={numVal} onChange={num} />
+        </div>
+      );
+    case "start-unknown":
+      return (
+        <div>
+          <p className="text-lg leading-snug text-foreground">
+            <NumBadge n={n} />
+            {problem.mode === "add"
+              ? `${problem.name} had some ${problem.item}. Then ${problem.name} got ${problem.b} more. Now ${problem.name} has ${problem.total} ${problem.item}. How many ${problem.item} did ${problem.name} have in the beginning?`
+              : problem.item === "eggs"
+                ? `A dinosaur had some eggs in a nest. After ${problem.b} eggs hatched, there were still ${problem.total}. How many were in the nest in the beginning?`
+                : `${problem.name} had some ${problem.item}. ${problem.name} gave ${problem.b} away. Now ${problem.name} has ${problem.total} left. How many ${problem.item} did ${problem.name} have in the beginning?`}
+          </p>
+          <div className="mt-3">
+            <WritingPad label="Show your work." />
+          </div>
+          <AnswerLine value={numVal} onChange={num} />
+        </div>
+      );
+    case "two-step":
+      return (
+        <div>
+          <p className="text-lg leading-snug text-foreground">
+            <NumBadge n={n} />
+            {problem.name} found {problem.a} {problem.item}. {problem.name} gave {problem.b} to a museum and {problem.c} to a friend. How many{" "}
+            {problem.item} does {problem.name} have left? Show your work.
+          </p>
+          <div className="mt-3">
+            <WritingPad label="Show your work." />
+          </div>
+          <AnswerLine value={numVal} onChange={num} />
+        </div>
+      );
+    case "model-check":
+      return (
+        <div>
+          <p className="text-lg leading-snug text-foreground">
+            <NumBadge n={n} />
+            {problem.name} has {problem.total} {problem.item}. {problem.name} gives {problem.part} {problem.item} to a friend. How many{" "}
+            {problem.item} does {problem.name} have left?
+          </p>
+          <p className="mt-2 text-lg leading-snug text-foreground">Does this model show the problem correctly?</p>
+          <PartWholeModel
+            whole={problem.correct ? String(problem.total) : "?"}
+            part1={problem.correct ? String(problem.part) : String(problem.total)}
+            part2={problem.correct ? "?" : String(problem.part)}
+          />
+          <div className="mt-3 flex gap-2">
+            {(["Yes", "No"] as const).map((label) => {
+              const val = label === "Yes";
+              const on = answer.kind === "yesno" && answer.answer === val;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => onAnswer({ kind: "yesno", answer: val })}
+                  className={`flex-1 rounded-2xl border-2 px-4 py-3 text-xl font-black transition-transform active:scale-95 ${
+                    on ? "border-[var(--dojo-primary)] bg-[var(--dojo-primary)] text-white" : "border-foreground/20 bg-white text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3">
+            <WritingPad label="Explain — why or why not?" />
+          </div>
         </div>
       );
   }
@@ -638,19 +806,19 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
           You got {score} out of {problems.length}!
         </h2>
         <p className="text-center text-base text-foreground/70">
-          {score === problems.length ? "Perfect — just like the real test!" : score >= 7 ? "Great work! Look at the ones you missed." : "Good practice! Try again with new numbers."}
+          {score === problems.length ? "Perfect — just like the real test!" : score >= 9 ? "Great work! Look at the ones you missed." : "Good practice! Try again with new numbers."}
         </p>
-        <div className="w-full max-w-sm rounded-3xl bg-white p-4 shadow">
+        <div className="w-full max-w-md rounded-3xl bg-white p-4 shadow md:max-w-xl">
           {problems.map((p, i) => (
             <div key={i} className="flex items-center gap-3 border-b border-foreground/10 py-2 last:border-0">
               <span className="text-xl">{results[i] ? "✅" : "❌"}</span>
               <span className="text-base font-bold text-foreground">
-                Problem {i + 1} — {p.kind === "decompose" ? "Ways to add" : p.kind === "sum-work" ? "Sum" : p.kind === "tyler" ? "Check Tyler" : p.kind === "yesno" ? "Yes or No" : p.kind === "numberline" ? "Number line" : p.kind === "word-sub" ? "Word problem" : p.kind === "missing" ? "How many more" : p.kind === "word-mc" ? "Pages" : "Strategy"}
+                Problem {i + 1} — {p.kind === "decompose" ? "Ways to add" : p.kind === "sum-work" ? "Sum" : p.kind === "tyler" ? "Check Tyler" : p.kind === "yesno" ? "Yes or No" : p.kind === "numberline" ? "Number line" : p.kind === "word-sub" ? "Word problem" : p.kind === "missing" ? "How many more" : p.kind === "word-mc" ? "Pages" : p.kind === "start-unknown" ? "Start unknown" : p.kind === "two-step" ? "Two steps" : p.kind === "model-check" ? "Model check" : "Strategy"}
               </span>
             </div>
           ))}
         </div>
-        <div className="flex w-full max-w-sm flex-col gap-3">
+        <div className="flex w-full max-w-md flex-col gap-3 md:max-w-xl">
           <BigButton variant="primary" onClick={newTest}>
             🔄 New test
           </BigButton>
@@ -665,7 +833,7 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
   const g = checked[idx] ? grade(problem, answer) : null;
 
   return (
-    <div className="flex min-h-screen flex-col gap-3 bg-[var(--dojo-bg)] px-3 py-4">
+    <div className="mx-auto flex min-h-screen w-full flex-col gap-3 bg-[var(--dojo-bg)] px-3 py-4 md:max-w-3xl lg:max-w-4xl">
       <div className="flex items-center justify-between px-1">
         <div>
           <h2 className="text-2xl font-black text-[var(--dojo-primary)]">Unit 2 Practice Test</h2>
@@ -680,7 +848,7 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
       </div>
 
       {/* The paper page */}
-      <div className="w-full rounded-3xl bg-white p-4 shadow-lg">
+      <div className="w-full rounded-3xl bg-white p-4 shadow-lg md:p-6">
         <ProblemView problem={problem} index={idx} answer={answer} onAnswer={setAnswer} />
         {g && (
           <div
