@@ -1005,17 +1005,23 @@ function TwoPlayerBattleScreen({
   const fx = useFightFx();
   const mounted = useMounted();
 
-  // Alan (player 1, bottom) walks in once when the fight starts, then idle takes over.
-  // Wait for the intro strip to be decoded first (see BattleScreen).
+  // Alan (player 1, bottom) and Bayan (player 2, top) walk in once when the
+  // fight starts, then idle takes over. Wait for both intro strips to be
+  // decoded first (see BattleScreen).
   const introPlayed = useRef(false);
   useEffect(() => {
     if (setup || introPlayed.current) return;
     introPlayed.current = true;
     let alive = true;
     void (async () => {
-      const src = CHARACTERS.alan.intro?.src;
-      if (src) await waitForImage(src);
-      if (alive) void fx.play("bottom", "intro");
+      const alanSrc = CHARACTERS.alan.intro?.src;
+      const bayanSrc = CHARACTERS.bayan.intro?.src;
+      if (alanSrc) await waitForImage(alanSrc);
+      if (bayanSrc) await waitForImage(bayanSrc);
+      if (alive) {
+        void fx.play("bottom", "intro");
+        void fx.play("top", "intro");
+      }
     })();
     return () => {
       alive = false;
