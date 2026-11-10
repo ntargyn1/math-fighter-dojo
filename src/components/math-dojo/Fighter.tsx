@@ -196,7 +196,15 @@ function SpriteStrip({ strip, mirrored, paused, onDone }: { strip: StripConfig; 
           backgroundImage: `url(${strip.src})`,
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
-          ["--sprite-end" as string]: `${(-100 * (n - 1)) / n}%`,
+          // End at -100% (not -(n-1)/n): with steps(n, jump-none) the displayed
+          // shifts are k/n of the end, so only -100% lands exactly on frame
+          // boundaries (-k frame widths). The old -(n-1)/n end drifted 1/n of
+          // a frame per step — invisible on 12-frame strips (neighbouring
+          // frames look alike) but it tore the 7-frame kick apart: each step
+          // showed two different poses side by side (stretched, smeared).
+          // Fill-forwards with jump-none holds the stepped end value, i.e.
+          // the last frame exactly — no blank past the strip.
+          ["--sprite-end" as string]: "-100%",
           animation: `dojo-sprite ${ms}ms steps(${n}, jump-none) ${strip.loop ? "infinite" : "1 forwards"}`,
           animationPlayState: paused ? "paused" : "running",
         }}
