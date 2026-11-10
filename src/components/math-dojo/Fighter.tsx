@@ -119,11 +119,19 @@ export function Fighter({
         case "uppercut": {
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
-          // Kick lunges only 16px (not 46 like cross): the kick strip is wide
-          // (leg extended) and the 46px lunge carried the foot past the arena
-          // centre, where the slot clips it — the leg was sliced at the seam.
-          const dist = state === "uppercut" ? 56 : state === "kick" ? 16 : 36;
-          await controls.start({ x: dist * d, y: state === "uppercut" ? -8 : 0, transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
+          // Kick lunge: Alan's standing high kick lunges only 16px (the strip
+          // is wide and the old 46px carried the foot past the arena centre,
+          // where the slot clips it). Bayan's jump kick lunges 30px — a
+          // shortened jump (the sheet's jump is much longer) so her extended
+          // foot reaches Alan without crossing the centre — and it takes
+          // 450ms to get there, so the forward travel matches the strip's
+          // airborne phase instead of snapping back before the kick lands.
+          // The strip itself carries the vertical jump (frames rise ~100px
+          // off the ground), so no y arc here.
+          const dist =
+            state === "uppercut" ? 56 : state === "kick" ? (character === "bayan" ? 30 : 16) : 36;
+          const lungeMs = state === "kick" && character === "bayan" ? 450 : LUNGE_MS;
+          await controls.start({ x: dist * d, y: state === "uppercut" ? -8 : 0, transition: { duration: lungeMs / 1000, ease: "easeIn" } });
           if (!alive) return;
           await freeze();
           if (!alive) return;
