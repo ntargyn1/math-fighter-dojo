@@ -4,7 +4,7 @@ import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { SchoolTestScreen } from "./SchoolTest";
-import { Fighter, HITSTOP_MS, LUNGE_MS, preloadAllStrips, type FighterState, type AttackMove } from "./Fighter";
+import { Fighter, LUNGE_MS, preloadAllStrips, type FighterState, type AttackMove } from "./Fighter";
 import { CHARACTERS } from "./spriteConfig";
 import { BOSSES, defeatBoss, loadUnlocked, type BossDef } from "./campaign";
 
@@ -172,6 +172,14 @@ function playUltimateAnimation() {
   console.debug("ULTIMATE!");
 }
 
+// Booger Attack: the monster's slap lands late in the 1.33s strip (its fist
+// is out at ~0.9s, confirmed live) — the hit feedback must wait for it. At
+// LUNGE_MS (120ms) Alan is still picking his nose and the monster hasn't
+// appeared, so the defender would flinch at nothing and the slap would land
+// on an idle fighter. 900ms puts the popup, burst, flinch and slime on the
+// slap frame.
+const BOOGER_IMPACT_MS = 900;
+
 // ---------- Fight FX (framer-motion) ----------
 
 interface Popup {
@@ -210,6 +218,10 @@ function useFightFx() {
   const [states, setStates] = useState<Record<Side, FighterState>>({ top: "idle", bottom: "idle" });
   const [popups, setPopups] = useState<Popup[]>([]);
   const [bursts, setBursts] = useState<Popup[]>([]);
+  // Green slime splat on the defender when a Booger Attack lands (the
+  // monster's hand can't cross the arena centre — its slot clips there —
+  // so the splat is what makes the hit visible on Bayan).
+  const [slimes, setSlimes] = useState<Popup[]>([]);
   const [ko, setKo] = useState<Side | null>(null);
   const idRef = useRef(0);
   const cur = useRef<Record<Side, FighterState>>({ top: "idle", bottom: "idle" });
@@ -248,14 +260,26 @@ function useFightFx() {
     }, 1000);
   };
 
+  const addSlime = (side: Side) => {
+    const id = ++idRef.current;
+    setSlimes((s) => [...s, { id, side, text: "" }]);
+    setTimeout(() => {
+      setSlimes((s) => s.filter((x) => x.id !== id));
+    }, 1000);
+  };
+
   // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
   const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit") => {
     const defender: Side = attacker === "top" ? "bottom" : "top";
+    // Booger: the monster's slap lands at ~0.9s, so the hit feedback waits
+    // for it instead of firing at LUNGE_MS (when the monster isn't there).
+    const impactMs = move === "booger" ? BOOGER_IMPACT_MS : LUNGE_MS;
     const atk = play(attacker, move);
-    await wait(LUNGE_MS); // impact frame
+    await wait(impactMs); // impact frame
     addFx(defender, text, reaction === "hit");
+    if (move === "booger" && reaction === "hit") addSlime(defender);
     const def = play(defender, reaction);
-    if (shake && reaction === "hit") setTimeout(() => void stage.start({ x: [0, 4, -4, 4, -4, 0], transition: { duration: 0.2 } }), HITSTOP_MS);
+    if (shake && reaction === "hit") void stage.start({ x: [0, 4, -4, 4, -4, 0], transition: { duration: 0.2 } });
     await Promise.all([atk, def]);
   };
 
@@ -270,9 +294,40 @@ function useFightFx() {
     await wait(700);
   };
 
-  return { stage, states, onEnd, popups, bursts, ko, strike, dodge, knockOut, play };
+  return { stage, states, onEnd, popups, bursts, slimes, ko, strike, dodge, knockOut, play };
 }
 type FightFx = ReturnType<typeof useFightFx>;
+
+/** Green slime splat on the defender when a Booger Attack lands: a blob that
+ * pops in on the fighter's torso and fades. This is the visible "monster hit
+ * Bayan" moment — the monster's hand stops at the arena centre, so the
+ * splat carries the contact. */
+function SlimeSplat({ side }: { side: Side }) {
+  void side;
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2">
+      <motion.div
+        initial={{ scale: 0, opacity: 1 }}
+        animate={{ scale: [0, 1.25, 1], opacity: [1, 1, 0] }}
+        transition={{ duration: 0.9, times: [0, 0.25, 1], ease: "easeOut" }}
+        className="relative h-24 w-24"
+      >
+        {/* main blob */}
+        <div
+          className="absolute inset-0 bg-[#22c55e]"
+          style={{ borderRadius: "55% 45% 60% 40% / 50% 55% 45% 50%" }}
+        />
+        {/* droplets */}
+        <div className="absolute -left-4 top-2 h-6 w-6 rounded-full bg-[#22c55e]" />
+        <div className="absolute -right-3 top-6 h-5 w-5 rounded-full bg-[#16a34a]" />
+        <div className="absolute -bottom-3 left-6 h-4 w-4 rounded-full bg-[#22c55e]" />
+        <div className="absolute -bottom-1 right-4 h-3 w-3 rounded-full bg-[#16a34a]" />
+        {/* wet highlight */}
+        <div className="absolute left-4 top-3 h-4 w-6 rounded-full bg-white/40" />
+      </motion.div>
+    </div>
+  );
+}
 
 function StarBurst({ side }: { side: Side }) {
   return (
@@ -361,6 +416,11 @@ function FighterSlot({ fx, side, color, bossEmoji }: { fx: FightFx; side: Side; 
         .filter((b) => b.side === side)
         .map((b) => (
           <StarBurst key={b.id} side={side} />
+        ))}
+      {fx.slimes
+        .filter((b) => b.side === side)
+        .map((b) => (
+          <SlimeSplat key={b.id} side={side} />
         ))}
       <AnimatePresence>
         {fx.popups
