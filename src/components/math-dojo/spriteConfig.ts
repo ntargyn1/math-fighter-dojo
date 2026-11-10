@@ -37,7 +37,7 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     intro: strip("/sprites/alan-intro-v2.png", 10, false, 10),
     jab: strip("/sprites/alan-jab-v7.png", 28, false, 12),
     kick: strip("/sprites/alan-kick-v2.png", 12, false, 12),
-    booger: strip("/sprites/alan-booger-v1.png", 12, false, 12),
+    booger: strip("/sprites/alan-booger-v2.png", 12, false, 16),
     block: strip("/sprites/alan-block-v4.png", 20, true, 12),
   },
   bayan: {
