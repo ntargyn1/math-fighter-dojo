@@ -6,11 +6,13 @@ import { WritingPad } from "./WritingPad";
  * School Test — practice problems in the same format as the Grade 2 Unit 2
  * Mid-Unit Assessment: same problem types, same paper look (numbered
  * problems, "Show your work.", "Solution ___"), new numbers every test.
- * Twelve kinds now: the nine from the assessment plus three from Lesson 9
- * (start-unknown, two-step, model check). The handwriting pad is scratch
- * work, like the margin of a test — the app grades the checkable part (the
- * answer / the Yes-No choices) and shows the model explanation so the child
- * can compare it with what they wrote.
+ * Ten problems: the first five are this week's Lesson 9 kinds
+ * (how-many-more, yes-or-no, start-unknown, two-step, model check), the
+ * next five are last week's Unit 2 assessment kinds (decompose, sum, Tyler
+ * check, number line, strategy). The handwriting pad is scratch work, like
+ * the margin of a test — the app grades the checkable part (the answer /
+ * the Yes-No choices) and shows the model explanation so the child can
+ * compare it with what they wrote.
  */
 
 // ---------- helpers ----------
@@ -210,18 +212,18 @@ function genModelCheck(): SchoolProblem {
 
 function genTest(): SchoolProblem[] {
   return [
-    genDecompose(),
-    genSumWork(),
-    genTyler(),
-    genYesNo(),
-    genNumberline(),
-    genWordSub(),
+    // This week — Lesson 9 (two-digit word problems).
     genMissing(),
-    genWordMc(),
-    genStrategy(),
+    genYesNo(),
     genStartUnknown(),
     genTwoStep(),
     genModelCheck(),
+    // Last week — Unit 2 assessment.
+    genDecompose(),
+    genSumWork(),
+    genTyler(),
+    genNumberline(),
+    genStrategy(),
   ];
 }
 
@@ -917,7 +919,7 @@ function ProblemView({
  * mid-test resumes where the child left off — answers, position and score
  * all come back. The handwriting on the pads is scratch work and is not
  * saved; the typed answers are what count. */
-const STORAGE_KEY = "mfd-school-test";
+const STORAGE_KEY = "mfd-school-test-v2";
 
 type SavedTest = {
   problems: SchoolProblem[];
@@ -1008,7 +1010,7 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
           You got {score} out of {problems.length}!
         </h2>
         <p className="text-center text-base text-foreground/70">
-          {score === problems.length ? "Perfect — just like the real test!" : score >= 9 ? "Great work! Look at the ones you missed." : "Good practice! Try again with new numbers."}
+          {score === problems.length ? "Perfect — just like the real test!" : score >= 8 ? "Great work! Look at the ones you missed." : "Good practice! Try again with new numbers."}
         </p>
         <div className="w-full max-w-md rounded-3xl bg-white p-4 shadow md:max-w-xl">
           {problems.map((p, i) => (
