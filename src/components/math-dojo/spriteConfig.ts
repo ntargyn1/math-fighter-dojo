@@ -34,8 +34,8 @@ export interface CharacterSprites {
 export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
   alan: {
     idle: strip("/sprites/alan-idle-v4.png", 12, true, 12),
-    intro: strip("/sprites/alan-intro-v1.png", 10, false, 10),
-    jab: strip("/sprites/alan-jab-v6.png", 28, false, 12),
+    intro: strip("/sprites/alan-intro-v2.png", 10, false, 10),
+    jab: strip("/sprites/alan-jab-v7.png", 28, false, 12),
     cross: strip("/sprites/alan-cross-v4.png", 24, false, 12),
     uppercut: strip("/sprites/alan-uppercut-v4.png", 22, false, 12),
     block: strip("/sprites/alan-block-v4.png", 20, true, 12),
