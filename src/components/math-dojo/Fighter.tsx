@@ -7,8 +7,8 @@ import { CHARACTERS, type CharacterId, type StripConfig } from "./spriteConfig";
  * Procedural motion (lunge, hitstop, knockback, KO fall) runs on the container;
  * the sprite strip inside plays frames with CSS steps(). Only the sprite element is mirrored.
  */
-export type FighterState = "idle" | "intro" | "jab" | "kick" | "uppercut" | "block" | "hit" | "ko";
-export type AttackMove = "jab" | "kick" | "uppercut";
+export type FighterState = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko";
+export type AttackMove = "jab" | "kick" | "booger";
 export type Facing = "left" | "right";
 
 export const HITSTOP_MS = 100;
@@ -116,7 +116,7 @@ export function Fighter({
         }
         case "jab":
         case "kick":
-        case "uppercut": {
+        case "booger": {
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
           // Kick lunge: Alan's standing high kick lunges only 16px (the strip
@@ -128,10 +128,13 @@ export function Fighter({
           // airborne phase instead of snapping back before the kick lands.
           // The strip itself carries the vertical jump (frames rise ~100px
           // off the ground), so no y arc here.
+          // Booger lunge is 16px too — the monster strip is wide (fills the
+          // frame), so a bigger lunge would carry its kick foot past the
+          // arena centre, where the slot clips it.
           const dist =
-            state === "uppercut" ? 56 : state === "kick" ? (character === "bayan" ? 30 : 16) : 36;
+            state === "booger" ? 16 : state === "kick" ? (character === "bayan" ? 30 : 16) : 36;
           const lungeMs = state === "kick" && character === "bayan" ? 450 : LUNGE_MS;
-          await controls.start({ x: dist * d, y: state === "uppercut" ? -8 : 0, transition: { duration: lungeMs / 1000, ease: "easeIn" } });
+          await controls.start({ x: dist * d, y: 0, transition: { duration: lungeMs / 1000, ease: "easeIn" } });
           if (!alive) return;
           await freeze();
           if (!alive) return;

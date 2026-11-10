@@ -13,7 +13,7 @@ export interface StripConfig {
 }
 
 export type CharacterId = "alan" | "bayan";
-export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "uppercut" | "block" | "hit" | "ko";
+export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko";
 
 const FRAME = { frames: 6, frameWidth: 326, frameHeight: 348 } as const;
 const strip = (src: string, fps: number, loop: boolean, frames: number = FRAME.frames): StripConfig => ({ src, fps, loop, frames, frameWidth: FRAME.frameWidth, frameHeight: FRAME.frameHeight });
@@ -24,7 +24,7 @@ export interface CharacterSprites {
   intro?: StripConfig;
   jab: StripConfig;
   kick: StripConfig;
-  uppercut: StripConfig;
+  booger: StripConfig;
   block: StripConfig;
   /** Optional real strips. When missing, hit/ko are procedural on top of the current strip. */
   hit?: StripConfig;
@@ -37,7 +37,7 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     intro: strip("/sprites/alan-intro-v2.png", 10, false, 10),
     jab: strip("/sprites/alan-jab-v7.png", 28, false, 12),
     kick: strip("/sprites/alan-kick-v2.png", 12, false, 12),
-    uppercut: strip("/sprites/alan-uppercut-v4.png", 22, false, 12),
+    booger: strip("/sprites/alan-booger-v1.png", 12, false, 12),
     block: strip("/sprites/alan-block-v4.png", 20, true, 12),
   },
   bayan: {
@@ -45,7 +45,7 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     intro: strip("/sprites/bayan-intro-v1.png", 10, false, 14),
     jab: strip("/sprites/bayan-jab-v6.png", 28, false, 12),
     kick: strip("/sprites/bayan-jumpkick-v1.png", 12, false, 12),
-    uppercut: strip("/sprites/bayan-uppercut-v3.png", 22, false, 12),
+    booger: strip("/sprites/bayan-uppercut-v3.png", 22, false, 12),
     block: strip("/sprites/bayan-block-v2.png", 20, true, 12),
   },
 };
