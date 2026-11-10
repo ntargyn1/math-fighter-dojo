@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BigButton } from "./MathFightingDojo";
 import { WritingPad } from "./WritingPad";
 
@@ -13,6 +13,9 @@ import { WritingPad } from "./WritingPad";
  * the margin of a test — the app grades the checkable part (the answer /
  * the Yes-No choices) and shows the model explanation so the child can
  * compare it with what they wrote.
+ * Sensei shows the visual model first — the column setup the way the child
+ * writes it on the pad, with "?" instead of the answer — and only then the
+ * text hints, one at a time.
  */
 
 // ---------- helpers ----------
@@ -338,7 +341,7 @@ function grade(p: SchoolProblem, ans: AnswerState): { correct: boolean; feedback
 
 /** Step-by-step hints for each problem, using the problem's own numbers.
  * Revealed one at a time, like a tutor: think first, then the setup, then
- * the full walkthrough. */
+ * the full walkthrough. They come AFTER the visual model (see model()). */
 function hints(p: SchoolProblem): string[] {
   switch (p.kind) {
     case "decompose": {
@@ -446,6 +449,79 @@ function hints(p: SchoolProblem): string[] {
 
 // ---------- small pieces ----------
 
+/** Column arithmetic, the way the child writes it on the pad: the numbers
+ * stacked, the operator on the left, a line, and "?" where the answer goes.
+ * The model shows HOW to set the problem up — never the answer. */
+function ColumnMath({ rows, op }: { rows: (number | string)[]; op: "+" | "−" }) {
+  return (
+    <div className="inline-block text-right font-black text-foreground">
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-baseline justify-end gap-2 text-4xl leading-tight">
+          <span className="w-6 text-left text-3xl">{i === 0 ? "" : op}</span>
+          <span>{r}</span>
+        </div>
+      ))}
+      <div className="my-1 border-t-[3px] border-foreground" />
+      <div className="flex items-baseline justify-end gap-2 text-4xl leading-tight">
+        <span className="w-6" />
+        <span className="text-[var(--dojo-primary)]">?</span>
+      </div>
+    </div>
+  );
+}
+
+/** Break both numbers into tens and ones — the setup for the "strategy"
+ * and "decompose" problems. Shows the method, not the answer. */
+function TensOnesSplit({ a, b }: { a: number; b: number }) {
+  return (
+    <div className="text-2xl font-black leading-snug text-foreground">
+      <div>
+        {a} = {tens(a)} + {ones(a)}
+      </div>
+      <div>
+        {b} = {tens(b)} + {ones(b)}
+      </div>
+    </div>
+  );
+}
+
+/** The visual model Sensei shows first: how to set the problem up, the way
+ * the child writes it on the pad — column math, a tens/ones split, or the
+ * right part-whole diagram. The answer is always "?", never filled in. */
+function model(p: SchoolProblem): ReactNode {
+  switch (p.kind) {
+    case "missing":
+      return <ColumnMath rows={[p.end, p.start]} op="−" />;
+    case "yesno":
+      return <ColumnMath rows={[p.a, p.b]} op="−" />;
+    case "start-unknown":
+      return p.mode === "add" ? <ColumnMath rows={[p.total, p.b]} op="−" /> : <ColumnMath rows={[p.total, p.b]} op="+" />;
+    case "two-step":
+      return (
+        <div className="flex items-center gap-3">
+          <ColumnMath rows={[p.a, p.b]} op="−" />
+          <span className="text-3xl font-black text-foreground">→</span>
+          <ColumnMath rows={["?", p.c]} op="−" />
+        </div>
+      );
+    case "sum-work":
+      return <ColumnMath rows={[p.a, p.b]} op="+" />;
+    case "tyler":
+      return <ColumnMath rows={[p.b, p.wrong]} op="+" />;
+    case "word-sub":
+      return <ColumnMath rows={[p.a, p.b]} op="−" />;
+    case "word-mc":
+      return <ColumnMath rows={[p.a, p.b]} op="+" />;
+    case "numberline":
+      return <ColumnMath rows={p.jumps} op="+" />;
+    case "strategy":
+    case "decompose":
+      return <TensOnesSplit a={p.a} b={p.b} />;
+    case "model-check":
+      return <PartWholeModel whole={String(p.total)} part1={String(p.part)} part2="?" />;
+  }
+}
+
 /** Numbered badge like on the school paper. */
 function NumBadge({ n }: { n: number }) {
   return (
@@ -532,8 +608,10 @@ function PartWholeModel({ whole, part1, part2 }: { whole: string; part1: string;
   );
 }
 
-/** Sensei help — hints revealed one at a time, like a tutor. */
-function HelpBox({ hints, level, onLevel }: { hints: string[]; level: number; onLevel: (l: number) => void }) {
+/** Sensei help — the visual model first (how to set it up, no answer),
+ * then the text hints one at a time, like a tutor. */
+function HelpBox({ model, hints, level, onLevel }: { model: ReactNode; hints: string[]; level: number; onLevel: (l: number) => void }) {
+  const total = hints.length + 1;
   if (level === 0) {
     return (
       <button
@@ -548,12 +626,14 @@ function HelpBox({ hints, level, onLevel }: { hints: string[]; level: number; on
   return (
     <div className="mt-4 rounded-2xl border-2 border-[var(--dojo-primary)]/40 bg-[var(--dojo-primary)]/5 p-3">
       <div className="mb-2 text-base font-black text-[var(--dojo-primary)]">🥋 Sensei says:</div>
-      {hints.slice(0, level).map((h, i) => (
+      <div className="mb-1 text-center text-sm font-bold text-foreground/60">Set it up like this:</div>
+      <div className="mb-2 flex justify-center py-1">{model}</div>
+      {hints.slice(0, level - 1).map((h, i) => (
         <p key={i} className="mb-2 text-base font-bold leading-snug text-foreground last:mb-0">
           {i + 1}. {h}
         </p>
       ))}
-      {level < hints.length && (
+      {level < total && (
         <button
           type="button"
           onClick={() => onLevel(level + 1)}
@@ -1055,6 +1135,7 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
       <div className="w-full rounded-3xl bg-white p-4 shadow-lg md:p-6">
         <ProblemView problem={problem} index={idx} answer={answer} onAnswer={setAnswer} />
         <HelpBox
+          model={model(problem)}
           hints={hints(problem)}
           level={hintLevel[idx] ?? 0}
           onLevel={(l) => setHintLevel((m) => ({ ...m, [idx]: l }))}
