@@ -50,7 +50,7 @@ const PUNCHES: Record<
   { label: string; emoji: string; levelShift: number; damage: number; counter: number; risk: string }
 > = {
   light: { label: "Light Jab", emoji: "👊", levelShift: -2, damage: 10, counter: 0, risk: "Easy • No risk" },
-  medium: { label: "Medium Cross", emoji: "🥊", levelShift: 0, damage: 20, counter: 10, risk: "Normal • Miss = -10 you" },
+  medium: { label: "Medium Kick", emoji: "🦶", levelShift: 0, damage: 20, counter: 10, risk: "Normal • Miss = -10 you" },
   heavy: { label: "Heavy Uppercut", emoji: "💥", levelShift: 2, damage: 35, counter: 20, risk: "Hard • Miss = -20 you" },
 };
 
@@ -322,7 +322,7 @@ function BossFighter({
       } else if (state === "block") {
         await controls.start({ scale: [1, 0.8, 1], transition: { duration: 0.5 } });
       } else {
-        // jab | cross | uppercut — lunge toward the player (left)
+        // jab | kick | uppercut — lunge toward the player (left)
         const lunge = state === "uppercut" ? { x: -36, y: -16 } : { x: -40, y: 0 };
         await controls.start({ ...lunge, transition: { duration: 0.12, ease: "easeIn" } });
         await controls.start({ x: 0, y: 0, transition: { duration: 0.2, ease: "easeOut" } });
@@ -844,7 +844,7 @@ function BattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       npc -= r.damage;
       setNpcHealth(npc);
-      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "uppercut" : round.punch === "medium" ? "cross" : "jab");
+      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "uppercut" : round.punch === "medium" ? "kick" : "jab");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
@@ -852,7 +852,7 @@ function BattleScreen({
       playHitAnimation("player");
       me -= r.counter;
       setPlayerHealth(me);
-      await fx.strike("top", `-${r.counter}`, true, round.punch === "heavy" ? "uppercut" : "cross");
+      await fx.strike("top", `-${r.counter}`, true, round.punch === "heavy" ? "uppercut" : "kick");
     } else {
       sfx.whoosh();
       await fx.strike("bottom", "Blocked!", false, "jab", "block");
@@ -1045,14 +1045,14 @@ function TwoPlayerBattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       next[defender] -= r.damage;
       setHealth(next);
-      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "uppercut" : round.punch === "medium" ? "cross" : "jab");
+      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "uppercut" : round.punch === "medium" ? "kick" : "jab");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
       sfx.punch(round.punch === "heavy");
       next[attacker] -= r.counter;
       setHealth(next);
-      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "uppercut" : "cross");
+      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "uppercut" : "kick");
     } else {
       sfx.whoosh();
       await fx.strike(sideOf(attacker), "Blocked!", false, "jab", "block");

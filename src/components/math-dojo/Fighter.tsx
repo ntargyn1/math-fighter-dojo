@@ -7,8 +7,8 @@ import { CHARACTERS, type CharacterId, type StripConfig } from "./spriteConfig";
  * Procedural motion (lunge, hitstop, knockback, KO fall) runs on the container;
  * the sprite strip inside plays frames with CSS steps(). Only the sprite element is mirrored.
  */
-export type FighterState = "idle" | "intro" | "jab" | "cross" | "uppercut" | "block" | "hit" | "ko";
-export type AttackMove = "jab" | "cross" | "uppercut";
+export type FighterState = "idle" | "intro" | "jab" | "kick" | "uppercut" | "block" | "hit" | "ko";
+export type AttackMove = "jab" | "kick" | "uppercut";
 export type Facing = "left" | "right";
 
 export const HITSTOP_MS = 100;
@@ -115,11 +115,11 @@ export function Fighter({
           return done();
         }
         case "jab":
-        case "cross":
+        case "kick":
         case "uppercut": {
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
-          const dist = state === "uppercut" ? 56 : state === "cross" ? 46 : 36;
+          const dist = state === "uppercut" ? 56 : state === "kick" ? 46 : 36;
           await controls.start({ x: dist * d, y: state === "uppercut" ? -8 : 0, transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
           if (!alive) return;
           await freeze();
