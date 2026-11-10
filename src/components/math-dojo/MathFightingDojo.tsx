@@ -5,6 +5,7 @@ import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { SchoolTestScreen } from "./SchoolTest";
 import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState, type AttackMove } from "./Fighter";
+import { CHARACTERS } from "./spriteConfig";
 import { BOSSES, defeatBoss, loadUnlocked, type BossDef } from "./campaign";
 
 type Screen =
@@ -178,6 +179,31 @@ interface Popup {
   side: Side;
   text: string;
 }
+
+/**
+ * Wait until an image is decoded and ready to draw (or give up after
+ * `timeoutMs`). Never rejects. Used before the walk-in intro: the intro
+ * fires right at battle start, and without this the strip can play blank
+ * for its whole 1s while the PNG is still downloading.
+ */
+const waitForImage = (src: string, timeoutMs = 3000): Promise<void> =>
+  new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
+        resolve();
+      }
+    };
+    const img = new Image();
+    img.onload = () => {
+      if (img.decode) img.decode().then(finish, finish);
+      else finish();
+    };
+    img.onerror = finish;
+    img.src = src;
+    setTimeout(finish, timeoutMs);
+  });
 
 function useFightFx() {
   const stage = useAnimationControls();
@@ -786,11 +812,21 @@ function BattleScreen({
   const mounted = useMounted();
 
   // Alan walks in once at battle start, then idle takes over (never loops).
+  // Wait for the intro strip to be decoded first: it fires right at mount,
+  // and playing it before the PNG arrives shows a blank fighter for its 1s.
   const introPlayed = useRef(false);
   useEffect(() => {
     if (introPlayed.current) return;
     introPlayed.current = true;
-    void fx.play("bottom", "intro");
+    let alive = true;
+    void (async () => {
+      const src = CHARACTERS.alan.intro?.src;
+      if (src) await waitForImage(src);
+      if (alive) void fx.play("bottom", "intro");
+    })();
+    return () => {
+      alive = false;
+    };
     // fx.play only closes over refs + setState; the fx object itself is fresh each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -970,11 +1006,20 @@ function TwoPlayerBattleScreen({
   const mounted = useMounted();
 
   // Alan (player 1, bottom) walks in once when the fight starts, then idle takes over.
+  // Wait for the intro strip to be decoded first (see BattleScreen).
   const introPlayed = useRef(false);
   useEffect(() => {
     if (setup || introPlayed.current) return;
     introPlayed.current = true;
-    void fx.play("bottom", "intro");
+    let alive = true;
+    void (async () => {
+      const src = CHARACTERS.alan.intro?.src;
+      if (src) await waitForImage(src);
+      if (alive) void fx.play("bottom", "intro");
+    })();
+    return () => {
+      alive = false;
+    };
     // fx.play only closes over refs + setState; the fx object itself is fresh each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup]);
