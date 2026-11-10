@@ -4,7 +4,7 @@ import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { SchoolTestScreen } from "./SchoolTest";
-import { Fighter, HITSTOP_MS, LUNGE_MS, type FighterState, type AttackMove } from "./Fighter";
+import { Fighter, HITSTOP_MS, LUNGE_MS, preloadAllStrips, type FighterState, type AttackMove } from "./Fighter";
 import { CHARACTERS } from "./spriteConfig";
 import { BOSSES, defeatBoss, loadUnlocked, type BossDef } from "./campaign";
 
@@ -1298,6 +1298,13 @@ export function MathFightingDojo() {
   const [campaignBoss, setCampaignBoss] = useState(0);
 
   useEffect(() => setWins(loadWins()), []);
+
+  // Warm the sprite cache at app start (home screen): the strips otherwise
+  // start downloading only when the first battle mounts, leaving a blank
+  // arena for ~0.7s on a cold load before the fighters pop in mid-walk-in.
+  useEffect(() => {
+    preloadAllStrips();
+  }, []);
 
   const startBattle = () => {
     setBattleKey((k) => k + 1);
