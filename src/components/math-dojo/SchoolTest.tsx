@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BigButton } from "./MathFightingDojo";
 import { WritingPad } from "./WritingPad";
 
@@ -332,6 +332,116 @@ function grade(p: SchoolProblem, ans: AnswerState): { correct: boolean; feedback
   }
 }
 
+// ---------- hints (Sensei) ----------
+
+/** Step-by-step hints for each problem, using the problem's own numbers.
+ * Revealed one at a time, like a tutor: think first, then the setup, then
+ * the full walkthrough. */
+function hints(p: SchoolProblem): string[] {
+  switch (p.kind) {
+    case "decompose": {
+      const sum = p.a + p.b;
+      const list = p.options.filter((o) => o.correct).map((o) => o.text).join("  •  ");
+      return [
+        `Add up each choice. Only the ones that make ${sum} are right.`,
+        `Break ${p.a} into tens and ones: ${p.a} = ${tens(p.a)} + ${ones(p.a)}. Do the same for ${p.b}.`,
+        `The ways that work: ${list}.`,
+      ];
+    }
+    case "sum-work":
+      return [
+        "Add the ones first, then the tens.",
+        `Ones: ${ones(p.a)} + ${ones(p.b)} = ${ones(p.a) + ones(p.b)}. That's more than 9, so it makes a new ten!`,
+        `${p.a} + ${p.b} = ${p.a + p.b}.`,
+      ];
+    case "tyler": {
+      const right = p.a - p.b;
+      const check = p.b + p.wrong;
+      return [
+        `Check with addition. If ${p.a} − ${p.b} = ${p.wrong} were right, then ${p.b} + ${p.wrong} would be ${p.a}.`,
+        `${p.b} + ${p.wrong} = ${check}. Is that ${p.a}? No!`,
+        `The right answer is ${p.a} − ${p.b} = ${right}.`,
+      ];
+    }
+    case "yesno": {
+      const answer = p.a - p.b;
+      const usable = p.rows.filter((r) => r.canUse).map((r) => r.text).join("  •  ");
+      return [
+        `First find the answer: ${p.name2} has ${p.a} − ${p.b} = ${answer} ${p.item}.`,
+        `Now put ${answer} where the ? is. If the sentence is true, it's Yes.`,
+        `The ones that work: ${usable}.`,
+      ];
+    }
+    case "numberline": {
+      const total = p.jumps.reduce((s, j) => s + j, 0);
+      return [
+        `Count the jumps. ${p.name} forgot one!`,
+        `The jumps are ${p.jumps.join(" + ")}.`,
+        `Add them all: ${p.jumps.join(" + ")} = ${total}.`,
+      ];
+    }
+    case "word-sub":
+      return [
+        `${p.name} uses ${p.b} ${p.item}, so take them away from ${p.a}.`,
+        `Write it as ${p.a} − ${p.b} = ?`,
+        `${p.a} − ${p.b} = ${p.a - p.b}. Check: ${p.a - p.b} + ${p.b} = ${p.a}.`,
+      ];
+    case "missing": {
+      const answer = p.end - p.start;
+      return [
+        `This is a "how many more" problem: ${p.start} + ? = ${p.end}.`,
+        `To find ?, subtract: ${p.end} − ${p.start}.`,
+        `? = ${answer}. Check: ${p.start} + ${answer} = ${p.end}.`,
+      ];
+    }
+    case "word-mc":
+      return [
+        `"In all" means add the two days together.`,
+        `${p.a} + ${p.b} = ?`,
+        `${p.a} + ${p.b} = ${p.a + p.b} pages.`,
+      ];
+    case "strategy":
+      return [
+        "Break both numbers into tens and ones.",
+        `${p.a} = ${tens(p.a)} + ${ones(p.a)}, ${p.b} = ${tens(p.b)} + ${ones(p.b)}.`,
+        `Tens: ${tens(p.a)} + ${tens(p.b)} = ${tens(p.a) + tens(p.b)}. Ones: ${ones(p.a)} + ${ones(p.b)} = ${ones(p.a) + ones(p.b)}. Total: ${p.a + p.b}.`,
+      ];
+    case "start-unknown": {
+      const answer = p.mode === "add" ? p.total - p.b : p.total + p.b;
+      return p.mode === "add"
+        ? [
+            "The start is missing — work backwards!",
+            `? + ${p.b} = ${p.total}, so ? = ${p.total} − ${p.b}.`,
+            `? = ${answer}. Check: ${answer} + ${p.b} = ${p.total}.`,
+          ]
+        : [
+            "The start is missing — work backwards!",
+            `? − ${p.b} = ${p.total}, so ? = ${p.total} + ${p.b}.`,
+            `? = ${answer}. Check: ${answer} − ${p.b} = ${p.total}.`,
+          ];
+    }
+    case "two-step": {
+      const first = p.a - p.b;
+      const answer = first - p.c;
+      return [
+        "Do it in two steps — one gift at a time.",
+        `First: ${p.a} − ${p.b} = ${first}.`,
+        `Then: ${first} − ${p.c} = ${answer}.`,
+      ];
+    }
+    case "model-check": {
+      const left = p.total - p.part;
+      return [
+        "In a part-whole model, the whole goes on top and the parts go below.",
+        `What did ${p.name} start with? ${p.total} — that's the whole.`,
+        p.correct
+          ? `The model is right: ${p.total} on top, ${p.part} and ? below. ${p.total} − ${p.part} = ${left}.`
+          : `The model is wrong: it puts ${p.total} as a part, but ${p.total} is the whole. The right model has ${p.total} on top.`,
+      ];
+    }
+  }
+}
+
 // ---------- small pieces ----------
 
 /** Numbered badge like on the school paper. */
@@ -416,6 +526,40 @@ function PartWholeModel({ whole, part1, part2 }: { whole: string; part1: string;
         <div className={box}>{part1}</div>
         <div className={box}>{part2}</div>
       </div>
+    </div>
+  );
+}
+
+/** Sensei help — hints revealed one at a time, like a tutor. */
+function HelpBox({ hints, level, onLevel }: { hints: string[]; level: number; onLevel: (l: number) => void }) {
+  if (level === 0) {
+    return (
+      <button
+        type="button"
+        onClick={() => onLevel(1)}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--dojo-primary)]/50 bg-[var(--dojo-primary)]/5 px-4 py-3 text-lg font-black text-[var(--dojo-primary)] transition-transform active:scale-95"
+      >
+        🥋 Stuck? Ask Sensei for a hint
+      </button>
+    );
+  }
+  return (
+    <div className="mt-4 rounded-2xl border-2 border-[var(--dojo-primary)]/40 bg-[var(--dojo-primary)]/5 p-3">
+      <div className="mb-2 text-base font-black text-[var(--dojo-primary)]">🥋 Sensei says:</div>
+      {hints.slice(0, level).map((h, i) => (
+        <p key={i} className="mb-2 text-base font-bold leading-snug text-foreground last:mb-0">
+          {i + 1}. {h}
+        </p>
+      ))}
+      {level < hints.length && (
+        <button
+          type="button"
+          onClick={() => onLevel(level + 1)}
+          className="mt-2 rounded-full bg-[var(--dojo-primary)] px-4 py-2 text-base font-black text-white transition-transform active:scale-95"
+        >
+          Still stuck? Next hint →
+        </button>
+      )}
     </div>
   );
 }
@@ -769,13 +913,70 @@ function ProblemView({
 
 // ---------- screen ----------
 
+/** The test autosaves to localStorage, so closing or minimizing the app
+ * mid-test resumes where the child left off — answers, position and score
+ * all come back. The handwriting on the pads is scratch work and is not
+ * saved; the typed answers are what count. */
+const STORAGE_KEY = "mfd-school-test";
+
+type SavedTest = {
+  problems: SchoolProblem[];
+  idx: number;
+  answers: Record<number, AnswerState>;
+  checked: Record<number, boolean>;
+  results: Record<number, boolean>;
+  hintLevel: Record<number, number>;
+  done: boolean;
+};
+
+const KNOWN_KINDS = new Set([
+  "decompose",
+  "sum-work",
+  "tyler",
+  "yesno",
+  "numberline",
+  "word-sub",
+  "missing",
+  "word-mc",
+  "strategy",
+  "start-unknown",
+  "two-step",
+  "model-check",
+]);
+
+function loadSaved(): SavedTest | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as SavedTest;
+    if (!s || !Array.isArray(s.problems) || s.problems.length === 0) return null;
+    if (!s.problems.every((p) => p && KNOWN_KINDS.has(p.kind))) return null;
+    return s;
+  } catch {
+    return null;
+  }
+}
+
 export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
-  const [problems, setProblems] = useState<SchoolProblem[]>(() => genTest());
-  const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, AnswerState>>({});
-  const [checked, setChecked] = useState<Record<number, boolean>>({});
-  const [results, setResults] = useState<Record<number, boolean>>({});
-  const [done, setDone] = useState(false);
+  const [saved] = useState<SavedTest | null>(() => loadSaved());
+  const [problems, setProblems] = useState<SchoolProblem[]>(() => saved?.problems ?? genTest());
+  const [idx, setIdx] = useState(() =>
+    saved && saved.idx >= 0 && saved.idx < saved.problems.length ? saved.idx : 0,
+  );
+  const [answers, setAnswers] = useState<Record<number, AnswerState>>(saved?.answers ?? {});
+  const [checked, setChecked] = useState<Record<number, boolean>>(saved?.checked ?? {});
+  const [results, setResults] = useState<Record<number, boolean>>(saved?.results ?? {});
+  const [hintLevel, setHintLevel] = useState<Record<number, number>>(saved?.hintLevel ?? {});
+  const [done, setDone] = useState(saved?.done ?? false);
+
+  useEffect(() => {
+    try {
+      const s: SavedTest = { problems, idx, answers, checked, results, hintLevel, done };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    } catch {
+      // Storage unavailable — the test still works, it just won't resume.
+    }
+  }, [problems, idx, answers, checked, results, hintLevel, done]);
 
   const problem = problems[idx];
   const answer = answers[idx] ?? defaultAnswer(problem);
@@ -793,6 +994,7 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
     setAnswers({});
     setChecked({});
     setResults({});
+    setHintLevel({});
     setDone(false);
   };
 
@@ -850,6 +1052,11 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
       {/* The paper page */}
       <div className="w-full rounded-3xl bg-white p-4 shadow-lg md:p-6">
         <ProblemView problem={problem} index={idx} answer={answer} onAnswer={setAnswer} />
+        <HelpBox
+          hints={hints(problem)}
+          level={hintLevel[idx] ?? 0}
+          onLevel={(l) => setHintLevel((m) => ({ ...m, [idx]: l }))}
+        />
         {g && (
           <div
             className={`mt-4 rounded-2xl border-2 p-3 text-base font-bold leading-snug ${
