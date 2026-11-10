@@ -54,6 +54,12 @@ const PUNCHES: Record<
   heavy: { label: "Booger Attack", emoji: "🤢", levelShift: 2, damage: 35, counter: 20, risk: "Hard • Miss = -20 you" },
 };
 
+/** Heavy is per-fighter: Alan's monster booger vs Bayan's cat scratch. */
+const heavyFor = (p: PlayerId) =>
+  p === "player2"
+    ? { label: "Cat Scratch", emoji: "🐱" }
+    : { label: "Booger Attack", emoji: "🤢" };
+
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -142,8 +148,10 @@ interface RoundResult {
   label: string;
 }
 
-function resolveRound(punch: PunchKind, correct: boolean, elapsed: number, streak: number): RoundResult {
+function resolveRound(punch: PunchKind, correct: boolean, elapsed: number, streak: number, attacker: PlayerId = "player1"): RoundResult {
   const p = PUNCHES[punch];
+  const heavy = heavyFor(attacker);
+  const label = punch === "heavy" ? heavy.label : p.label;
   if (!correct) {
     return {
       hit: false,
@@ -161,7 +169,7 @@ function resolveRound(punch: PunchKind, correct: boolean, elapsed: number, strea
     return { hit: true, damage: ULTIMATE_DAMAGE, counter: 0, newStreak: 0, ultimate: true, fast, label: "⚡ ULTIMATE STRIKE! ⚡" };
   }
   const damage = Math.round(p.damage * (fast ? FAST_MULTIPLIER : 1));
-  return { hit: true, damage, counter: 0, newStreak, ultimate: false, fast, label: fast ? `FAST ${p.label}! -${damage}` : `${p.label}! -${damage}` };
+  return { hit: true, damage, counter: 0, newStreak, ultimate: false, fast, label: fast ? `FAST ${label}! -${damage}` : `${label}! -${damage}` };
 }
 
 // ---------- Placeholder animation hooks (extend later) ----------
@@ -222,6 +230,10 @@ function useFightFx() {
   // monster's hand can't cross the arena centre — its slot clips there —
   // so the splat is what makes the hit visible on Bayan).
   const [slimes, setSlimes] = useState<Popup[]>([]);
+  // Red claw marks on the defender when Bayan's Cat Scratch lands (same
+  // centre-clip problem as the monster: the cat's paws stop at the edge
+  // of her slot, so the marks carry the contact on Alan's face).
+  const [scratches, setScratches] = useState<Popup[]>([]);
   const [ko, setKo] = useState<Side | null>(null);
   const idRef = useRef(0);
   const cur = useRef<Record<Side, FighterState>>({ top: "idle", bottom: "idle" });
@@ -268,8 +280,19 @@ function useFightFx() {
     }, 1000);
   };
 
+  const addScratch = (side: Side) => {
+    const id = ++idRef.current;
+    setScratches((s) => [...s, { id, side, text: "" }]);
+    setTimeout(() => {
+      setScratches((s) => s.filter((x) => x.id !== id));
+    }, 1000);
+  };
+
   // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
-  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit") => {
+  // effect: which visible hit mark the heavy leaves on the defender —
+  // "slime" for Alan's monster booger, "scratch" for Bayan's cat, "none"
+  // for the boss (an emoji, it has no monster or cat).
+  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit", effect: "slime" | "scratch" | "none" = "none") => {
     const defender: Side = attacker === "top" ? "bottom" : "top";
     // Booger: the monster's slap lands at ~0.9s, so the hit feedback waits
     // for it instead of firing at LUNGE_MS (when the monster isn't there).
@@ -277,7 +300,10 @@ function useFightFx() {
     const atk = play(attacker, move);
     await wait(impactMs); // impact frame
     addFx(defender, text, reaction === "hit");
-    if (move === "booger" && reaction === "hit") addSlime(defender);
+    if (move === "booger" && reaction === "hit") {
+      if (effect === "slime") addSlime(defender);
+      else if (effect === "scratch") addScratch(defender);
+    }
     const def = play(defender, reaction);
     if (shake && reaction === "hit") void stage.start({ x: [0, 4, -4, 4, -4, 0], transition: { duration: 0.2 } });
     await Promise.all([atk, def]);
@@ -294,7 +320,7 @@ function useFightFx() {
     await wait(700);
   };
 
-  return { stage, states, onEnd, popups, bursts, slimes, ko, strike, dodge, knockOut, play };
+  return { stage, states, onEnd, popups, bursts, slimes, scratches, ko, strike, dodge, knockOut, play };
 }
 type FightFx = ReturnType<typeof useFightFx>;
 
@@ -302,6 +328,32 @@ type FightFx = ReturnType<typeof useFightFx>;
  * pops in on the fighter's torso and fades. This is the visible "monster hit
  * Bayan" moment — the monster's hand stops at the arena centre, so the
  * splat carries the contact. */
+/** Red claw marks on the defender's face when Bayan's Cat Scratch lands:
+ * three slashes that pop in on the face and fade. Same job as the slime
+ * splat — the cat's paws stop at the arena centre, so the marks are the
+ * visible "cat scratched Alan's face" moment. */
+function ScratchMarks({ side }: { side: Side }) {
+  void side;
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-[10%] -translate-x-1/2">
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: [0, 1, 1, 0] }}
+        transition={{ duration: 0.9, times: [0, 0.2, 0.7, 1], ease: "easeOut" }}
+        className="relative h-16 w-20"
+      >
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="absolute h-1.5 w-16 rounded-full bg-red-500"
+            style={{ top: 12 + i * 14, left: 4, transform: "rotate(-18deg)", boxShadow: "0 0 4px rgba(239,68,68,0.8)" }}
+          />
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
 function SlimeSplat({ side }: { side: Side }) {
   void side;
   return (
@@ -421,6 +473,11 @@ function FighterSlot({ fx, side, color, bossEmoji }: { fx: FightFx; side: Side; 
         .filter((b) => b.side === side)
         .map((b) => (
           <SlimeSplat key={b.id} side={side} />
+        ))}
+      {fx.scratches
+        .filter((b) => b.side === side)
+        .map((b) => (
+          <ScratchMarks key={b.id} side={side} />
         ))}
       <AnimatePresence>
         {fx.popups
@@ -599,13 +656,13 @@ export function BigButton({
   );
 }
 
-function PunchPicker({ onPick, title }: { onPick: (p: PunchKind) => void; title: string }) {
+function PunchPicker({ onPick, title, heavy }: { onPick: (p: PunchKind) => void; title: string; heavy?: { label: string; emoji: string } }) {
   return (
     <div className="flex w-full flex-col gap-2 rounded-3xl bg-white/70 p-3 shadow-inner">
       <div className="text-center text-base font-black text-[var(--dojo-primary)]">{title}</div>
       <div className="grid grid-cols-3 gap-2">
       {(Object.keys(PUNCHES) as PunchKind[]).map((k) => {
-        const p = PUNCHES[k];
+        const p = k === "heavy" && heavy ? { ...PUNCHES[k], ...heavy } : PUNCHES[k];
         return (
           <button
             key={k}
@@ -904,7 +961,7 @@ function BattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       npc -= r.damage;
       setNpcHealth(npc);
-      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab");
+      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab", "hit", r.ultimate || round.punch === "heavy" ? "slime" : "none");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
@@ -1097,7 +1154,7 @@ function TwoPlayerBattleScreen({
     round.setPhase("resolving");
     const attacker = turn;
     const defender: PlayerId = attacker === "player1" ? "player2" : "player1";
-    const r = resolveRound(round.punch, correct, round.elapsed(), streaks[attacker]);
+    const r = resolveRound(round.punch, correct, round.elapsed(), streaks[attacker], attacker);
     setStreaks((s) => ({ ...s, [attacker]: r.newStreak }));
     const next = { ...health };
     if (r.hit) {
@@ -1105,14 +1162,14 @@ function TwoPlayerBattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       next[defender] -= r.damage;
       setHealth(next);
-      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab");
+      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab", "hit", r.ultimate || round.punch === "heavy" ? (attacker === "player1" ? "slime" : "scratch") : "none");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
       sfx.punch(round.punch === "heavy");
       next[attacker] -= r.counter;
       setHealth(next);
-      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "booger" : "kick");
+      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "booger" : "kick", "hit", round.punch === "heavy" ? (defender === "player1" ? "slime" : "scratch") : "none");
     } else {
       sfx.whoosh();
       await fx.strike(sideOf(attacker), "Blocked!", false, "jab", "block");
@@ -1179,7 +1236,7 @@ function TwoPlayerBattleScreen({
       >
         <FastMeter streak={streaks[p]} />
         {round.phase === "choose" ? (
-          <PunchPicker title={`${label}: choose your punch!`} onPick={(k) => round.begin(k, levels[p])} />
+          <PunchPicker title={`${label}: choose your punch!`} heavy={heavyFor(p)} onPick={(k) => round.begin(k, levels[p])} />
         ) : (
           <QuestionCard
             question={round.question}
