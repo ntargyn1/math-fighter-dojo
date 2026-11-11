@@ -15,7 +15,9 @@ import { WritingPad } from "./WritingPad";
  * compare it with what they wrote.
  * Sensei shows the visual model first — the column setup the way the child
  * writes it on the pad, with "?" instead of the answer — and only then the
- * text hints, one at a time.
+ * text hints, one at a time. For explain-the-error problems (number line)
+ * the model is a guiding question instead of a column, so it does not hand
+ * the child the answer: the child has to find the forgotten jump.
  */
 
 // ---------- helpers ----------
@@ -487,7 +489,10 @@ function TensOnesSplit({ a, b }: { a: number; b: number }) {
 
 /** The visual model Sensei shows first: how to set the problem up, the way
  * the child writes it on the pad — column math, a tens/ones split, or the
- * right part-whole diagram. The answer is always "?", never filled in. */
+ * right part-whole diagram. The answer is always "?", never filled in.
+ * Exception: the number-line problem is an explain-the-error problem, so
+ * its model is a guiding question, not a column — a column would just hand
+ * the child the sum of the jumps. */
 function model(p: SchoolProblem): ReactNode {
   switch (p.kind) {
     case "missing":
@@ -513,7 +518,14 @@ function model(p: SchoolProblem): ReactNode {
     case "word-mc":
       return <ColumnMath rows={[p.a, p.b]} op="+" />;
     case "numberline":
-      return <ColumnMath rows={p.jumps} op="+" />;
+      // Explain-the-error problem: the column would hand the child the
+      // answer (just add the jumps). School-style: a guiding question that
+      // sends the child back to the number line to find the forgotten jump.
+      return (
+        <div className="text-center text-lg font-bold leading-snug text-foreground">
+          Count the jumps on the number line. {p.name} got {p.claimed} — how many jumps did she add? Which one did she forget?
+        </div>
+      );
     case "strategy":
     case "decompose":
       return <TensOnesSplit a={p.a} b={p.b} />;
@@ -626,7 +638,6 @@ function HelpBox({ model, hints, level, onLevel }: { model: ReactNode; hints: st
   return (
     <div className="mt-4 rounded-2xl border-2 border-[var(--dojo-primary)]/40 bg-[var(--dojo-primary)]/5 p-3">
       <div className="mb-2 text-base font-black text-[var(--dojo-primary)]">🥋 Sensei says:</div>
-      <div className="mb-1 text-center text-sm font-bold text-foreground/60">Set it up like this:</div>
       <div className="mb-2 flex justify-center py-1">{model}</div>
       {hints.slice(0, level - 1).map((h, i) => (
         <p key={i} className="mb-2 text-base font-bold leading-snug text-foreground last:mb-0">
