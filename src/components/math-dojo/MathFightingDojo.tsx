@@ -184,9 +184,13 @@ function playUltimateAnimation() {
 // is out at ~0.9s, confirmed live) — the hit feedback must wait for it. At
 // LUNGE_MS (120ms) Alan is still picking his nose and the monster hasn't
 // appeared, so the defender would flinch at nothing and the slap would land
-// on an idle fighter. 900ms puts the popup, burst, flinch and slime on the
-// slap frame.
-const BOOGER_IMPACT_MS = 900;
+// on an idle fighter. The contact frame differs per fighter (the heavy
+// strips are 28 frames / ~2.33s now): Alan's monster slaps on strip frames
+// 25-26 (~2.0s), Bayan's cat starts scratching on strip frame 17 (~1.33s).
+// Each fighter gets its own delay, so the popup, burst, flinch and the
+// slime/scratch mark land on the actual contact frame.
+const ALAN_BOOGER_IMPACT_MS = 2000;
+const BAYAN_CAT_IMPACT_MS = 1400;
 
 // ---------- Fight FX (framer-motion) ----------
 
@@ -294,9 +298,20 @@ function useFightFx() {
   // for the boss (an emoji, it has no monster or cat).
   const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit", effect: "slime" | "scratch" | "none" = "none") => {
     const defender: Side = attacker === "top" ? "bottom" : "top";
-    // Booger: the monster's slap lands at ~0.9s, so the hit feedback waits
-    // for it instead of firing at LUNGE_MS (when the monster isn't there).
-    const impactMs = move === "booger" ? BOOGER_IMPACT_MS : LUNGE_MS;
+    // The heavy's contact frame differs per fighter (Alan's monster slaps
+    // at ~2.0s, Bayan's cat starts scratching at ~1.33s), so the hit
+    // feedback waits for the attacker's contact — not for LUNGE_MS (when
+    // the monster/cat isn't there yet) and not for a shared guess. The
+    // boss has no monster or cat (effect "none"), so its counter is a
+    // plain lunge and the feedback fires at LUNGE_MS.
+    const impactMs =
+      move === "booger"
+        ? effect === "slime"
+          ? ALAN_BOOGER_IMPACT_MS
+          : effect === "scratch"
+            ? BAYAN_CAT_IMPACT_MS
+            : LUNGE_MS
+        : LUNGE_MS;
     const atk = play(attacker, move);
     await wait(impactMs); // impact frame
     addFx(defender, text, reaction === "hit");
