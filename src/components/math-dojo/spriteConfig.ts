@@ -37,7 +37,7 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     intro: strip("/sprites/alan-intro-v2.png", 10, false, 10),
     jab: strip("/sprites/alan-jab-v7.png", 28, false, 12),
     kick: strip("/sprites/alan-kick-v2.png", 12, false, 12),
-    booger: strip("/sprites/alan-booger-v4.png", 12, false, 28),
+    booger: strip("/sprites/alan-booger-v5.png", 12, false, 28),
     block: strip("/sprites/alan-block-v4.png", 20, true, 12),
   },
   bayan: {
@@ -49,3 +49,13 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     block: strip("/sprites/bayan-block-v2.png", 20, true, 12),
   },
 };
+
+/**
+ * The booger monster, separated from Alan's strip: Alan's old booger strip
+ * (v4) had him vanish for frames 11-27 (only the booger/monster was drawn),
+ * so he looked like he turned into the monster. Now Alan's strip (v5) shows
+ * only Alan (throw, then guard), and the monster is its own strip that runs
+ * across the arena to the defender. 17 frames: booger flies, lands, grows
+ * into the monster, runs, slaps (last frames = the impact).
+ */
+export const MONSTER_BOOGER: StripConfig = strip("/sprites/monster-booger.png", 12, false, 17);

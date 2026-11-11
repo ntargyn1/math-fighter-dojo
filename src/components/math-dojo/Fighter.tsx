@@ -119,22 +119,17 @@ export function Fighter({
         case "booger": {
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
-          // Kick lunge: Alan's standing high kick lunges only 16px (the strip
-          // is wide and the old 46px carried the foot past the arena centre,
-          // where the slot clips it). Bayan's jump kick lunges 30px — a
-          // shortened jump (the sheet's jump is much longer) so her extended
-          // foot reaches Alan without crossing the centre — and it takes
-          // 450ms to get there, so the forward travel matches the strip's
-          // airborne phase instead of snapping back before the kick lands.
-          // The strip itself carries the vertical jump (frames rise ~100px
-          // off the ground), so no y arc here.
-          // Booger lunge is 16px too — the monster strip is wide (fills the
-          // frame), so a bigger lunge would carry its kick foot past the
-          // arena centre, where the slot clips it.
+          // Wider arena (Nov 10): the fighters stand further apart, so the
+          // attacker steps in further — a visible walk-up, not a twitch.
+          // The lunge still stops before the arena centre, where the
+          // opponent's slot would cover the attacker's foot.
+          // Jab 52px, Alan kick 32px, Bayan jump kick 40px, booger 32px
+          // (Alan only throws now — the monster runs on its own).
+          // A small y-bob makes the step read as walking, not sliding.
           const dist =
-            state === "booger" ? 16 : state === "kick" ? (character === "bayan" ? 30 : 16) : 36;
+            state === "booger" ? 32 : state === "kick" ? (character === "bayan" ? 40 : 32) : 52;
           const lungeMs = state === "kick" && character === "bayan" ? 450 : LUNGE_MS;
-          await controls.start({ x: dist * d, y: 0, transition: { duration: lungeMs / 1000, ease: "easeIn" } });
+          await controls.start({ x: dist * d, y: [0, -5, 0], transition: { duration: lungeMs / 1000, ease: "easeIn" } });
           if (!alive) return;
           await freeze();
           if (!alive) return;
@@ -151,9 +146,12 @@ export function Fighter({
           await freeze();
           if (!alive) return;
           setFlash("red");
-          await controls.start({ x: [0, -30 * d, -24 * d, -32 * d, -28 * d], scaleY: 1, transition: { duration: 0.2, ease: "easeOut" } });
+          // Hit reaction: the whole body recoils away from the attacker and
+          // leans back (rotate pivots at the feet, so the head and torso
+          // snap backward) — the "I got hit" read, not just a flash.
+          await controls.start({ x: [0, -36 * d, -28 * d, -38 * d, -32 * d], rotate: [0, -12 * d, -8 * d, -12 * d, -10 * d], scaleY: 1, transition: { duration: 0.22, ease: "easeOut" } });
           if (alive) setFlash("none");
-          await controls.start({ x: 0, transition: { duration: 0.15 } });
+          await controls.start({ x: 0, rotate: 0, transition: { duration: 0.15 } });
           if (!alive) return;
           show(sprites.idle);
           return done();

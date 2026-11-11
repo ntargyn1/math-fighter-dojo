@@ -5,7 +5,7 @@ import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { SchoolTestScreen } from "./SchoolTest";
 import { Fighter, LUNGE_MS, preloadAllStrips, type FighterState, type AttackMove } from "./Fighter";
-import { CHARACTERS } from "./spriteConfig";
+import { CHARACTERS, MONSTER_BOOGER } from "./spriteConfig";
 import { BOSSES, defeatBoss, loadUnlocked, type BossDef } from "./campaign";
 
 type Screen =
@@ -238,6 +238,12 @@ function useFightFx() {
   // centre-clip problem as the monster: the cat's paws stop at the edge
   // of her slot, so the marks carry the contact on Alan's face).
   const [scratches, setScratches] = useState<Popup[]>([]);
+  // The booger monster, running across the arena (Alan's Booger Attack):
+  // spawned when Alan throws, it travels from his slot to the defender
+  // and slaps at the impact moment, then fades.
+  const [monsters, setMonsters] = useState<Popup[]>([]);
+  // Big red VS intro at fight start: zooms in, then disappears.
+  const [vsIntro, setVsIntro] = useState(false);
   const [ko, setKo] = useState<Side | null>(null);
   const idRef = useRef(0);
   const cur = useRef<Record<Side, FighterState>>({ top: "idle", bottom: "idle" });
@@ -292,6 +298,19 @@ function useFightFx() {
     }, 1000);
   };
 
+  const addMonster = (side: Side) => {
+    const id = ++idRef.current;
+    setMonsters((m) => [...m, { id, side, text: "" }]);
+    setTimeout(() => {
+      setMonsters((m) => m.filter((x) => x.id !== id));
+    }, 2600);
+  };
+
+  const showVsIntro = () => {
+    setVsIntro(true);
+    setTimeout(() => setVsIntro(false), 1300);
+  };
+
   // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
   // effect: which visible hit mark the heavy leaves on the defender —
   // "slime" for Alan's monster booger, "scratch" for Bayan's cat, "none"
@@ -313,6 +332,12 @@ function useFightFx() {
             : LUNGE_MS
         : LUNGE_MS;
     const atk = play(attacker, move);
+    // Alan's Booger Attack: the monster runs on its own now (it is no
+    // longer baked into Alan's strip). It spawns as the booger leaves his
+    // hand (~0.7s, throw frame) and slaps at the impact moment.
+    if (move === "booger" && effect === "slime") {
+      setTimeout(() => addMonster(attacker), 700);
+    }
     await wait(impactMs); // impact frame
     addFx(defender, text, reaction === "hit");
     if (move === "booger" && reaction === "hit") {
@@ -335,7 +360,7 @@ function useFightFx() {
     await wait(700);
   };
 
-  return { stage, states, onEnd, popups, bursts, slimes, scratches, ko, strike, dodge, knockOut, play };
+  return { stage, states, onEnd, popups, bursts, slimes, scratches, monsters, vsIntro, showVsIntro, ko, strike, dodge, knockOut, play };
 }
 type FightFx = ReturnType<typeof useFightFx>;
 
@@ -393,6 +418,44 @@ function SlimeSplat({ side }: { side: Side }) {
         <div className="absolute left-4 top-3 h-4 w-6 rounded-full bg-white/40" />
       </motion.div>
     </div>
+  );
+}
+
+/**
+ * The booger monster, running across the arena on its own (Alan's Booger
+ * Attack). It spawns at Alan's slot as the booger leaves his hand, grows
+ * and runs toward the defender, slaps at the impact moment, then fades.
+ * The monster is its own strip (MONSTER_BOOGER, 17 frames) — it used to be
+ * baked into Alan's strip, which made Alan vanish for 17 frames and look
+ * like he turned into the monster himself.
+ */
+function MonsterRunner({ from }: { from: Side }) {
+  const n = MONSTER_BOOGER.frames;
+  const ms = (n / MONSTER_BOOGER.fps) * 1000;
+  // The monster always runs left -> right (Alan is the left fighter).
+  void from;
+  return (
+    <motion.div
+      className="pointer-events-none absolute bottom-3 z-20"
+      style={{ width: "42%", aspectRatio: `${MONSTER_BOOGER.frameWidth} / ${MONSTER_BOOGER.frameHeight}` }}
+      initial={{ left: "6%", opacity: 1 }}
+      animate={{ left: "52%", opacity: [1, 1, 1, 0] }}
+      transition={{ left: { duration: 1.35, ease: "linear" }, opacity: { duration: 1.6, times: [0, 0.8, 0.9, 1] } }}
+    >
+      <div className="h-full w-full overflow-hidden">
+        <div
+          className="h-full"
+          style={{
+            width: `${n * 100}%`,
+            backgroundImage: `url(${MONSTER_BOOGER.src})`,
+            backgroundSize: "100% 100%",
+            backgroundRepeat: "no-repeat",
+            ["--sprite-end" as string]: `${(-100 * (n - 1)) / n}%`,
+            animation: `dojo-sprite ${ms}ms steps(${n}, jump-none) 1 forwards`,
+          }}
+        />
+      </div>
+    </motion.div>
   );
 }
 
@@ -471,7 +534,7 @@ function FighterSlot({ fx, side, color, bossEmoji }: { fx: FightFx; side: Side; 
   // Left fighter (bottom) faces right; right fighter (top) is mirrored to face left.
   const flipped = side === "top";
   return (
-    <div className="relative flex h-full w-[38%] items-end justify-center">
+    <div className="relative flex h-full w-[32%] items-end justify-center">
       <div className="h-[85%] w-full">
         {bossEmoji && flipped ? (
           <BossFighter emoji={bossEmoji} state={fx.states[side]} onAnimationEnd={(s) => fx.onEnd(side, s)} />
@@ -529,14 +592,34 @@ function Arena({
   bossEmoji?: string;
 }) {
   return (
-    <div className="relative flex h-[40vh] min-h-56 w-full items-end justify-between overflow-hidden rounded-3xl bg-white/50 px-2 pb-3 shadow-inner">
+    <div className="relative flex aspect-[16/10] w-full items-end justify-between overflow-hidden rounded-3xl bg-white/50 px-3 pb-3 shadow-inner">
       <div className="absolute inset-x-6 bottom-3 h-1 rounded-full bg-foreground/15" />
       {banner && <div className="absolute inset-x-0 top-2 z-10 flex justify-center">{banner}</div>}
       <FighterSlot fx={fx} side="bottom" color={leftColor} />
-      <div className="mb-[18%] shrink-0 rounded-full bg-[var(--dojo-accent)] px-2 py-1 text-xs font-black text-[var(--dojo-accent-foreground)] shadow">
-        VS
-      </div>
       <FighterSlot fx={fx} side="top" color={rightColor} bossEmoji={bossEmoji} />
+      {fx.monsters.map((m) => (
+        <MonsterRunner key={m.id} from={m.side} />
+      ))}
+      <AnimatePresence>
+        {fx.vsIntro && (
+          <motion.div
+            className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -15 }}
+              animate={{ scale: [0, 1.4, 1, 1], opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 1.2, times: [0, 0.3, 0.7, 1], ease: "easeOut" }}
+              className="text-7xl font-black text-red-600"
+              style={{ textShadow: "0 4px 0 white, 0 -4px 0 white, 4px 0 0 white, -4px 0 0 white, 0 8px 24px rgba(0,0,0,0.25)" }}
+            >
+              VS
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -954,7 +1037,10 @@ function BattleScreen({
     void (async () => {
       const src = CHARACTERS.alan.intro?.src;
       if (src) await waitForImage(src);
-      if (alive) void fx.play("bottom", "intro");
+      if (alive) {
+        fx.showVsIntro();
+        void fx.play("bottom", "intro");
+      }
     })();
     return () => {
       alive = false;
@@ -1151,6 +1237,7 @@ function TwoPlayerBattleScreen({
       if (alanSrc) await waitForImage(alanSrc);
       if (bayanSrc) await waitForImage(bayanSrc);
       if (alive) {
+        fx.showVsIntro();
         void fx.play("bottom", "intro");
         void fx.play("top", "intro");
       }
