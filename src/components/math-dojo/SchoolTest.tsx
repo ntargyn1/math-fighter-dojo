@@ -7,12 +7,16 @@ import { WritingPad } from "./WritingPad";
  * Mid-Unit Assessment: same problem types, same paper look (numbered
  * problems, "Show your work.", "Solution ___"), new numbers every test.
  * Ten problems: the first five are this week's Lesson 9 kinds
- * (how-many-more, yes-or-no, start-unknown, two-step, model check), the
- * next five are last week's Unit 2 assessment kinds (decompose, sum, Tyler
- * check, number line, strategy). The handwriting pad is scratch work, like
- * the margin of a test — the app grades the checkable part (the answer /
- * the Yes-No choices) and shows the model explanation so the child can
- * compare it with what they wrote.
+ * (how-many-more, yes-or-no, start-unknown, two-step, model check), plus a
+ * sixth Lesson 9 kind from the "Ways to Model Word Problems" fluency sheet
+ * (Tony's blocks, Mrs. Lopez's chairs, Jen's buttons, Colby's boxes,
+ * Ayanna's pages, the camp's tents — all missing-addend / start-unknown
+ * word problems with new numbers every test). The next five are last
+ * week's Unit 2 assessment kinds (decompose, sum, Tyler check, number
+ * line, strategy). The handwriting pad is scratch work, like the margin
+ * of a test — the app grades the checkable part (the answer / the Yes-No
+ * choices) and shows the model explanation so the child can compare it
+ * with what they wrote.
  * Sensei shows the visual model first — the column setup the way the child
  * writes it on the pad, with "?" instead of the answer — and only then the
  * text hints, one at a time. For explain-the-error problems (number line)
@@ -56,7 +60,11 @@ type SchoolProblem =
   | { kind: "strategy"; a: number; b: number }
   | { kind: "start-unknown"; mode: "add" | "sub"; total: number; b: number; item: string; name: string }
   | { kind: "two-step"; a: number; b: number; c: number; item: string; name: string }
-  | { kind: "model-check"; total: number; part: number; correct: boolean; name: string; item: string };
+  | { kind: "model-check"; total: number; part: number; correct: boolean; name: string; item: string }
+  /** "Ways to Model Word Problems" fluency sheet (Nov 11 homework): one of
+   * six contexts, new numbers every test. The answer is always
+   * whole − known — the story just changes which part is missing. */
+  | { kind: "word-missing"; ctx: "blocks" | "chairs" | "buttons" | "boxes" | "pages" | "tents"; whole: number; known: number };
 
 type AnswerState =
   | { kind: "decompose"; selected: number[] }
@@ -215,6 +223,22 @@ function genModelCheck(): SchoolProblem {
   return { kind: "model-check", total, part, correct, name: kid(), item: pick(["marbles", "stickers", "seashells"] as const) };
 }
 
+/** "Ways to Model Word Problems" fluency sheet (Nov 11): the six homework
+ * contexts. Every form asks for the missing part, so the answer is always
+ * whole − known — only the story changes. Ranges match the sheet (two-digit
+ * numbers, answers 14–42); regrouping is preferred, like on the sheet. */
+function genWordMissing(): SchoolProblem {
+  const ctx = pick(["blocks", "chairs", "buttons", "boxes", "pages", "tents"] as const);
+  for (;;) {
+    const whole = ri(31, 68);
+    const known = ri(11, whole - 10);
+    const answer = whole - known;
+    if (answer >= 10 && answer <= 45 && (ones(whole) < ones(known) || Math.random() < 0.25)) {
+      return { kind: "word-missing", ctx, whole, known };
+    }
+  }
+}
+
 function genTest(): SchoolProblem[] {
   return [
     // This week — Lesson 9 (two-digit word problems).
@@ -223,6 +247,7 @@ function genTest(): SchoolProblem[] {
     genStartUnknown(),
     genTwoStep(),
     genModelCheck(),
+    genWordMissing(),
     // Last week — Unit 2 assessment.
     genDecompose(),
     genSumWork(),
@@ -336,6 +361,14 @@ function grade(p: SchoolProblem, ans: AnswerState): { correct: boolean; feedback
         ? { correct: true, feedback: `Right — ${verdict}. ${why}` }
         : { correct: false, feedback: `${verdict}. ${why}` };
     }
+    case "word-missing": {
+      if (ans.kind !== "number") return { correct: false, feedback: "" };
+      const answer = p.whole - p.known;
+      const ok = Number(ans.value) === answer;
+      return ok
+        ? { correct: true, feedback: `Correct! The missing part is ${p.whole} − ${p.known} = ${answer}.` }
+        : { correct: false, feedback: `The whole is ${p.whole} and one part is ${p.known}. The missing part is ${p.whole} − ${p.known} = ${answer} — do not add the two numbers.` };
+    }
   }
 }
 
@@ -446,6 +479,14 @@ function hints(p: SchoolProblem): string[] {
           : `The model is wrong: it puts ${p.total} as a part, but ${p.total} is the whole. The right model has ${p.total} on top.`,
       ];
     }
+    case "word-missing": {
+      const answer = p.whole - p.known;
+      return [
+        `The whole is ${p.whole} and one part is ${p.known}. What's the missing part?`,
+        `To find it, subtract: ${p.whole} − ${p.known} = ?`,
+        `${p.whole} − ${p.known} = ${answer}. Check: ${p.known} + ${answer} = ${p.whole}.`,
+      ];
+    }
   }
 }
 
@@ -531,6 +572,8 @@ function model(p: SchoolProblem): ReactNode {
       return <TensOnesSplit a={p.a} b={p.b} />;
     case "model-check":
       return <PartWholeModel whole={String(p.total)} part1={String(p.part)} part2="?" />;
+    case "word-missing":
+      return <ColumnMath rows={[p.whole, p.known]} op="−" />;
   }
 }
 
@@ -890,6 +933,32 @@ function ProblemView({
           <AnswerLine value={numVal} onChange={num} />
         </div>
       );
+    case "word-missing": {
+      const story =
+        problem.ctx === "blocks"
+          ? `Tony has ${problem.known} building blocks. Then he buys more blocks. Now he has ${problem.whole} blocks. How many blocks does Tony buy?`
+          : problem.ctx === "chairs"
+            ? `There are some chairs in the art room. Mrs. Lopez brings in ${problem.known} more chairs. Now there are ${problem.whole} chairs. How many chairs were in the room at the start?`
+            : problem.ctx === "buttons"
+              ? `Jen has some buttons. She gets ${problem.known} more buttons from her mom. Now she has ${problem.whole} buttons. How many buttons did Jen have to begin with?`
+              : problem.ctx === "boxes"
+                ? `Colby packs ${problem.whole} boxes in one day. He packs ${problem.known} boxes in the morning and some boxes after lunch. How many boxes does Colby pack after lunch?`
+                : problem.ctx === "pages"
+                  ? `Ayanna reads ${problem.known} pages of her book at school. Later she reads more pages at home. Now she has read ${problem.whole} pages. How many pages does Ayanna read at home?`
+                  : `The camp has some tents. Campers set up ${problem.known} more tents. Now the camp has ${problem.whole} tents. How many tents did the camp have to begin with?`;
+      return (
+        <div>
+          <p className="text-lg leading-snug text-foreground">
+            <NumBadge n={n} />
+            {story} Show your work.
+          </p>
+          <div className="mt-3">
+            <WritingPad label="Show your work." />
+          </div>
+          <AnswerLine value={numVal} onChange={num} />
+        </div>
+      );
+    }
     case "word-mc": {
       const letters = ["A", "B", "C", "D"];
       const chosen = numVal === "" ? null : Number(numVal);
@@ -1010,7 +1079,7 @@ function ProblemView({
  * mid-test resumes where the child left off — answers, position and score
  * all come back. The handwriting on the pads is scratch work and is not
  * saved; the typed answers are what count. */
-const STORAGE_KEY = "mfd-school-test-v2";
+const STORAGE_KEY = "mfd-school-test-v3";
 
 type SavedTest = {
   problems: SchoolProblem[];
@@ -1035,6 +1104,7 @@ const KNOWN_KINDS = new Set([
   "start-unknown",
   "two-step",
   "model-check",
+  "word-missing",
 ]);
 
 function loadSaved(): SavedTest | null {
@@ -1101,7 +1171,7 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
           You got {score} out of {problems.length}!
         </h2>
         <p className="text-center text-base text-foreground/70">
-          {score === problems.length ? "Perfect — just like the real test!" : score >= 8 ? "Great work! Look at the ones you missed." : "Good practice! Try again with new numbers."}
+          {score === problems.length ? "Perfect — just like the real test!" : score >= 9 ? "Great work! Look at the ones you missed." : "Good practice! Try again with new numbers."}
         </p>
         <div className="w-full max-w-md rounded-3xl bg-white p-4 shadow md:max-w-xl">
           {problems.map((p, i) => (
