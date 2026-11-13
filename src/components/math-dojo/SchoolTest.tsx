@@ -58,7 +58,7 @@ type SchoolProblem =
   | { kind: "missing"; start: number; end: number; item: string }
   | { kind: "word-mc"; a: number; b: number; options: number[] }
   | { kind: "strategy"; a: number; b: number }
-  | { kind: "start-unknown"; mode: "add" | "sub"; total: number; b: number; item: string; name: string }
+  | { kind: "start-unknown"; mode: "add" | "sub"; total: number; b: number; item: string; name: string; ctx?: "eggs" | "books" | "ducks" | "bats" | "apples" | "grapes" | "park" }
   | { kind: "two-step"; a: number; b: number; c: number; item: string; name: string }
   | { kind: "model-check"; total: number; part: number; correct: boolean; name: string; item: string }
   /** "Ways to Model Word Problems" fluency sheet (Nov 11 homework): one of
@@ -187,7 +187,10 @@ function genStrategy(): SchoolProblem {
 }
 
 /** Lesson 9: the start is unknown. "add" = ? + b = total (more arrived);
- * "sub" = ? − b = total (some left / hatched). */
+ * "sub" = ? − b = total (some left / hatched). The sub form is the Lesson 9
+ * Session 3 lesson (Nov 12 workbook): the start is the two parts added
+ * (books on a shelf, ducks in a pond, baseball bats, Kevin's apples,
+ * Rick's grapes, students cleaning the park). */
 function genStartUnknown(): SchoolProblem {
   const mode = Math.random() < 0.5 ? "add" : "sub";
   if (mode === "add") {
@@ -198,9 +201,19 @@ function genStartUnknown(): SchoolProblem {
         return { kind: "start-unknown", mode: "add", total, b, item: pick(["dinosaurs", "stickers", "marbles", "seashells"] as const), name: kid() };
     }
   }
-  const total = ri(21, 60);
-  const b = ri(5, 28);
-  return { kind: "start-unknown", mode: "sub", total, b, item: pick(["eggs", "stickers", "marbles"] as const), name: kid() };
+  const ctx = pick(["books", "ducks", "bats", "apples", "grapes", "park", "eggs"] as const);
+  for (;;) {
+    const b = ri(11, 34);
+    const total = ri(19, 48);
+    const answer = total + b;
+    // The workbook's numbers mostly need regrouping when adding the parts.
+    if (answer >= 30 && answer <= 90 && (ones(b) + ones(total) >= 10 || Math.random() < 0.25)) {
+      const name = ctx === "apples" ? "Kevin" : ctx === "grapes" ? "Rick" : kid();
+      const item =
+        ctx === "books" ? "books" : ctx === "ducks" ? "ducks" : ctx === "bats" ? "bats" : ctx === "apples" ? "apples" : ctx === "grapes" ? "grapes" : ctx === "park" ? "students" : "eggs";
+      return { kind: "start-unknown", mode: "sub", total, b, item, name, ctx };
+    }
+  }
 }
 
 /** Lesson 9: two steps — take away twice (Regina's teeth). */
@@ -1009,9 +1022,21 @@ function ProblemView({
             <NumBadge n={n} />
             {problem.mode === "add"
               ? `${problem.name} had some ${problem.item}. Then ${problem.name} got ${problem.b} more. Now ${problem.name} has ${problem.total} ${problem.item}. How many ${problem.item} did ${problem.name} have in the beginning?`
-              : problem.item === "eggs"
-                ? `A dinosaur had some eggs in a nest. After ${problem.b} eggs hatched, there were still ${problem.total}. How many were in the nest in the beginning?`
-                : `${problem.name} had some ${problem.item}. ${problem.name} gave ${problem.b} away. Now ${problem.name} has ${problem.total} left. How many ${problem.item} did ${problem.name} have in the beginning?`}
+              : problem.ctx === "books"
+                ? `Some books are on a shelf. Students take ${problem.b} books from the shelf. Then there are ${problem.total} books on the shelf. How many books are on the shelf to begin with?`
+                : problem.ctx === "ducks"
+                  ? `There are some ducks in a pond. Then ${problem.b} ducks fly away. Now there are ${problem.total} ducks in the pond. How many ducks are in the pond at the start?`
+                  : problem.ctx === "bats"
+                    ? `A sports store sells baseball bats. In one week, ${problem.b} bats are sold. Then the store has ${problem.total} bats left. How many bats does the store have to begin with?`
+                    : problem.ctx === "apples"
+                      ? `Kevin picks some apples. He uses ${problem.b} of the apples to make pies. He has ${problem.total} apples left. How many apples does Kevin pick?`
+                      : problem.ctx === "grapes"
+                        ? `Rick has some grapes. Rick eats ${problem.b} of the grapes. Then he has ${problem.total} grapes left. How many grapes does Rick start with?`
+                        : problem.ctx === "park"
+                          ? `Students help clean the park. At noon, ${problem.b} students go home. Now there are ${problem.total} students cleaning the park. How many students helped at the start?`
+                          : problem.item === "eggs"
+                            ? `A dinosaur had some eggs in a nest. After ${problem.b} eggs hatched, there were still ${problem.total}. How many were in the nest in the beginning?`
+                            : `${problem.name} had some ${problem.item}. ${problem.name} gave ${problem.b} away. Now ${problem.name} has ${problem.total} left. How many ${problem.item} did ${problem.name} have in the beginning?`}
           </p>
           <div className="mt-3">
             <WritingPad label="Show your work." />
