@@ -41,7 +41,10 @@ const tens = (n: number) => Math.floor(n / 10) * 10;
 const tensDigit = (n: number) => Math.floor(n / 10);
 const ones = (n: number) => n % 10;
 
-const KIDS = ["Alan", "Bayan", "Mia", "Noah", "Leo", "Emma", "Sam", "Ava"] as const;
+/** Names used in the generated problems. Alan's friends (Nov 18: Kash,
+ * Matteo, Rose, Tanner — Noah was already in the list) are in the pool,
+ * so the problems use names he knows. */
+const KIDS = ["Alan", "Bayan", "Mia", "Noah", "Leo", "Emma", "Sam", "Ava", "Kash", "Matteo", "Rose", "Tanner"] as const;
 const kid = () => pick(KIDS);
 
 // ---------- problem model ----------
