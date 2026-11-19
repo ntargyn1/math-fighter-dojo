@@ -6,17 +6,18 @@ import { WritingPad } from "./WritingPad";
  * School Test — practice problems in the same format as the Grade 2 Unit 2
  * Mid-Unit Assessment: same problem types, same paper look (numbered
  * problems, "Show your work.", "Solution ___"), new numbers every test.
- * Ten problems: the first five are this week's Lesson 9 kinds
- * (how-many-more, yes-or-no, start-unknown, two-step, model check), plus a
- * sixth Lesson 9 kind from the "Ways to Model Word Problems" fluency sheet
- * (Tony's blocks, Mrs. Lopez's chairs, Jen's buttons, Colby's boxes,
- * Ayanna's pages, the camp's tents — all missing-addend / start-unknown
- * word problems with new numbers every test). The next five are last
- * week's Unit 2 assessment kinds (decompose, sum, Tyler check, number
- * line, strategy). The handwriting pad is scratch work, like the margin
- * of a test — the app grades the checkable part (the answer / the Yes-No
- * choices) and shows the model explanation so the child can compare it
- * with what they wrote.
+ * Twelve problems: the first seven are this week's Lesson 9 kinds
+ * (how-many-more, yes-or-no, start-unknown, two-step, model check, the
+ * fluency-sheet missing-part kind, and choose-the-equations), plus five
+ * last week's Unit 2 assessment kinds (decompose, sum, Tyler check, number
+ * line, strategy). The two-step problem now covers all five forms from
+ * the Lesson 9 workbook and quiz (take away twice, add then take away,
+ * take away then add, "fewer" then total, add two parts then compare) —
+ * the Nov 18 quiz showed Alan stopping after step 1 and grabbing the
+ * wrong pair in the split-compare form. The handwriting pad is scratch
+ * work, like the margin of a test — the app grades the checkable part
+ * (the answer / the Yes-No choices) and shows the model explanation so
+ * the child can compare it with what they wrote.
  * Sensei shows the visual model first — the column setup the way the child
  * writes it on the pad, with "?" instead of the answer — and only then the
  * text hints, one at a time. For explain-the-error problems (number line)
@@ -59,8 +60,21 @@ type SchoolProblem =
   | { kind: "word-mc"; a: number; b: number; options: number[] }
   | { kind: "strategy"; a: number; b: number }
   | { kind: "start-unknown"; mode: "add" | "sub"; total: number; b: number; item: string; name: string; ctx?: "eggs" | "books" | "ducks" | "bats" | "apples" | "grapes" | "park" }
-  | { kind: "two-step"; a: number; b: number; c: number; item: string; name: string }
+  /** Two steps, five forms (Lesson 9 workbook + Nov 18 quiz). "minus-minus"
+   * = a−b−c (take away twice); "plus-minus" = a+b−c (get more, then use
+   * some); "minus-plus" = a−b+c (give away, then make more);
+   * "fewer-total" = first a, second a−b, total a+(a−b) (Amy/Nell leaves);
+   * "split-compare" = (a+b) is one group, compare it with c: c−(a+b)
+   * (the fair horses — the quiz trap was adding a red part to the blue
+   * number instead of the two red parts). name2 is the second person for
+   * fewer-total / split-compare. */
+  | { kind: "two-step"; form: "minus-minus" | "plus-minus" | "minus-plus" | "fewer-total" | "split-compare"; a: number; b: number; c: number; item: string; name: string; name2?: string }
   | { kind: "model-check"; total: number; part: number; correct: boolean; name: string; item: string }
+  /** Kimi's cows (Nov 18 quiz Q4): which equations find how many more
+   * cows than horses? "Choose all" — Alan found the two subtraction
+   * forms but missed the missing-addend form (17 + ? = 56). The rows are
+   * judged Yes/No one by one, like the muffins table. */
+  | { kind: "choose-equations"; a: number; b: number; itemA: string; itemB: string; name: string; rows: YesNoRow[] }
   /** "Ways to Model Word Problems" fluency sheet (Nov 11 homework): one of
    * six contexts, new numbers every test. The answer is always
    * whole − known — the story just changes which part is missing. */
@@ -80,6 +94,7 @@ function defaultAnswer(p: SchoolProblem): AnswerState {
     case "model-check":
       return { kind: "yesno", answer: null };
     case "yesno":
+    case "choose-equations":
       return { kind: "table", answers: p.rows.map(() => null) };
     default:
       return { kind: "number", value: "" };
@@ -216,14 +231,99 @@ function genStartUnknown(): SchoolProblem {
   }
 }
 
-/** Lesson 9: two steps — take away twice (Regina's teeth). */
+/** Lesson 9: two steps, five forms. The old form (take away twice) is
+ * kept but weighted lower — the quiz showed the other four are the weak
+ * spots: plus-minus (Gabe's blocks, the bus, the line), minus-plus
+ * (Mariel's fruit cups), fewer-total (Amy/Nell's leaves) and
+ * split-compare (the fair horses — add the two red parts FIRST). */
 function genTwoStep(): SchoolProblem {
+  const form = pick([
+    "minus-minus",
+    "plus-minus",
+    "plus-minus",
+    "minus-plus",
+    "minus-plus",
+    "fewer-total",
+    "fewer-total",
+    "split-compare",
+    "split-compare",
+  ] as const);
+  if (form === "minus-minus") {
+    for (;;) {
+      const a = ri(42, 95);
+      const b = ri(11, 29);
+      const c = ri(4, 15);
+      if (a - b - c >= 5)
+        return { kind: "two-step", form, a, b, c, item: pick(["stickers", "teeth", "marbles", "seashells"] as const), name: kid() };
+    }
+  }
+  if (form === "plus-minus") {
+    for (;;) {
+      const a = ri(30, 70);
+      const b = ri(11, 29);
+      const c = ri(11, 35);
+      if (a + b <= 95 && a + b - c >= 5)
+        return { kind: "two-step", form, a, b, c, item: "building blocks", name: kid() };
+    }
+  }
+  if (form === "minus-plus") {
+    for (;;) {
+      const a = ri(42, 95);
+      const b = ri(11, 29);
+      const c = ri(11, 29);
+      if (a - b >= 5 && a - b + c <= 99)
+        return { kind: "two-step", form, a, b, c, item: "fruit cups", name: kid() };
+    }
+  }
+  if (form === "fewer-total") {
+    const n1 = kid();
+    let n2 = kid();
+    while (n2 === n1) n2 = kid();
+    for (;;) {
+      const a = ri(31, 60);
+      const b = ri(11, 29);
+      const c = a - b;
+      if (c >= 5 && a + c <= 99)
+        return { kind: "two-step", form, a, b, c, item: "leaves", name: n1, name2: n2 };
+    }
+  }
+  // split-compare: a + b is one group (red ribbons), c is the other group.
+  const ctx = pick(["horses", "marbles"] as const);
+  const n1 = kid();
+  let n2 = kid();
+  while (n2 === n1) n2 = kid();
   for (;;) {
-    const a = ri(42, 95);
+    const a = ri(11, 19);
+    const b = ri(11, 19);
+    const red = a + b;
+    const c = red + ri(5, 15);
+    if (c <= 99)
+      return { kind: "two-step", form, a, b, c, item: ctx, name: n1, name2: n2 };
+  }
+}
+
+/** Kimi's cows (Nov 18 quiz Q4): a cows, b horses — which equations find
+ * how many more cows than horses? The missing-addend form (b + ? = a) is
+ * the one Alan missed. */
+function genChooseEquations(): SchoolProblem {
+  for (;;) {
+    const a = ri(34, 92);
     const b = ri(11, 29);
-    const c = ri(4, 15);
-    if (a - b - c >= 5)
-      return { kind: "two-step", a, b, c, item: pick(["stickers", "teeth", "marbles", "seashells"] as const), name: kid() };
+    if (a - b < 10) continue;
+    const pair = pick([
+      ["cows", "horses"],
+      ["apples", "oranges"],
+      ["red pens", "blue pens"],
+      ["stickers", "marbles"],
+    ] as const);
+    const rows = shuffle([
+      { text: `${a} − ? = ${b}`, canUse: true },
+      { text: `${a} − ${b} = ?`, canUse: true },
+      { text: `${a} + ${b} = ?`, canUse: false },
+      { text: `${b} + ? = ${a}`, canUse: true },
+      { text: `? − ${a} = ${b}`, canUse: false },
+    ]);
+    return { kind: "choose-equations", a, b, itemA: pair[0], itemB: pair[1], name: kid(), rows };
   }
 }
 
@@ -259,6 +359,7 @@ function genTest(): SchoolProblem[] {
     genYesNo(),
     genStartUnknown(),
     genTwoStep(),
+    genChooseEquations(),
     genModelCheck(),
     genWordMissing(),
     // Last week — Unit 2 assessment.
@@ -357,11 +458,27 @@ function grade(p: SchoolProblem, ans: AnswerState): { correct: boolean; feedback
     }
     case "two-step": {
       if (ans.kind !== "number") return { correct: false, feedback: "" };
-      const first = p.a - p.b;
-      const answer = first - p.c;
+      const { answer, how } =
+        p.form === "minus-minus"
+          ? { answer: p.a - p.b - p.c, how: `Do it in two steps: ${p.a} − ${p.b} = ${p.a - p.b}, then ${p.a - p.b} − ${p.c} = ${p.a - p.b - p.c}.` }
+          : p.form === "plus-minus"
+            ? { answer: p.a + p.b - p.c, how: `Do it in two steps: ${p.a} + ${p.b} = ${p.a + p.b}, then ${p.a + p.b} − ${p.c} = ${p.a + p.b - p.c}.` }
+            : p.form === "minus-plus"
+              ? { answer: p.a - p.b + p.c, how: `Do it in two steps: ${p.a} − ${p.b} = ${p.a - p.b}, then ${p.a - p.b} + ${p.c} = ${p.a - p.b + p.c}.` }
+              : p.form === "fewer-total"
+                ? { answer: p.a + (p.a - p.b), how: `Do it in two steps: ${p.name2} has ${p.a} − ${p.b} = ${p.a - p.b}. Then add both: ${p.a} + ${p.a - p.b} = ${p.a + (p.a - p.b)} in all.` }
+                : { answer: p.c - (p.a + p.b), how: `Do it in two steps: first add the two parts of the first group: ${p.a} + ${p.b} = ${p.a + p.b}. Then compare: ${p.c} − ${p.a + p.b} = ${p.c - (p.a + p.b)}.` };
       const ok = Number(ans.value) === answer;
-      const how = `Do it in two steps: ${p.a} − ${p.b} = ${first}, then ${first} − ${p.c} = ${answer}.`;
       return ok ? { correct: true, feedback: `Correct! ${how}` } : { correct: false, feedback: how };
+    }
+    case "choose-equations": {
+      if (ans.kind !== "table") return { correct: false, feedback: "" };
+      const ok = p.rows.every((r, i) => ans.answers[i] === r.canUse);
+      const usable = p.rows.filter((r) => r.canUse).map((r) => r.text).join("  •  ");
+      const diff = p.a - p.b;
+      return ok
+        ? { correct: true, feedback: `All correct! These find how many more: ${usable}.` }
+        : { correct: false, feedback: `Not quite. ${p.a} − ${p.b} = ${diff}. These find it: ${usable}. ${p.b} + ? = ${p.a} is the same question as ${p.a} − ${p.b} = ? — a missing addend counts too. ${p.a} + ${p.b} gives the total, not the difference.` };
     }
     case "model-check": {
       if (ans.kind !== "yesno") return { correct: false, feedback: "" };
@@ -474,12 +591,57 @@ function hints(p: SchoolProblem): string[] {
           ];
     }
     case "two-step": {
-      const first = p.a - p.b;
-      const answer = first - p.c;
+      if (p.form === "minus-minus") {
+        const first = p.a - p.b;
+        const answer = first - p.c;
+        return [
+          "Do it in two steps — one gift at a time.",
+          `First: ${p.a} − ${p.b} = ${first}.`,
+          `Then: ${first} − ${p.c} = ${answer}.`,
+        ];
+      }
+      if (p.form === "plus-minus") {
+        const first = p.a + p.b;
+        const answer = first - p.c;
+        return [
+          "Do it in two steps. First add what he gets, then take away what he uses.",
+          `First: ${p.a} + ${p.b} = ${first}.`,
+          `Then: ${first} − ${p.c} = ${answer}.`,
+        ];
+      }
+      if (p.form === "minus-plus") {
+        const first = p.a - p.b;
+        const answer = first + p.c;
+        return [
+          "Do it in two steps. First take away what she hands out, then add what she makes.",
+          `First: ${p.a} − ${p.b} = ${first}.`,
+          `Then: ${first} + ${p.c} = ${answer}.`,
+        ];
+      }
+      if (p.form === "fewer-total") {
+        const second = p.a - p.b;
+        const answer = p.a + second;
+        return [
+          "Two steps: first find how many the second person has, then add both together.",
+          `First: ${p.name2} has ${p.a} − ${p.b} = ${second}.`,
+          `Then: ${p.a} + ${second} = ${answer} in all.`,
+        ];
+      }
+      const group = p.a + p.b;
+      const answer = p.c - group;
       return [
-        "Do it in two steps — one gift at a time.",
-        `First: ${p.a} − ${p.b} = ${first}.`,
-        `Then: ${first} − ${p.c} = ${answer}.`,
+        "Two steps — and watch the trap: add the two parts of the FIRST group first.",
+        `First: ${p.a} + ${p.b} = ${group}. Do not add a red part to the blue number!`,
+        `Then compare: ${p.c} − ${group} = ${answer}.`,
+      ];
+    }
+    case "choose-equations": {
+      const diff = p.a - p.b;
+      const usable = p.rows.filter((r) => r.canUse).map((r) => r.text).join("  •  ");
+      return [
+        `First find the answer: ${p.a} − ${p.b} = ${diff}. Now put ${diff} where the ? is.`,
+        `${p.b} + ? = ${p.a} is the same question as ${p.a} − ${p.b} = ?. Check EVERY row — don't stop after two!`,
+        `The ones that work: ${usable}.`,
       ];
     }
     case "model-check": {
@@ -556,13 +718,47 @@ function model(p: SchoolProblem): ReactNode {
     case "start-unknown":
       return p.mode === "add" ? <ColumnMath rows={[p.total, p.b]} op="−" /> : <ColumnMath rows={[p.total, p.b]} op="+" />;
     case "two-step":
+      if (p.form === "minus-minus")
+        return (
+          <div className="flex items-center gap-3">
+            <ColumnMath rows={[p.a, p.b]} op="−" />
+            <span className="text-3xl font-black text-foreground">→</span>
+            <ColumnMath rows={["?", p.c]} op="−" />
+          </div>
+        );
+      if (p.form === "plus-minus")
+        return (
+          <div className="flex items-center gap-3">
+            <ColumnMath rows={[p.a, p.b]} op="+" />
+            <span className="text-3xl font-black text-foreground">→</span>
+            <ColumnMath rows={["?", p.c]} op="−" />
+          </div>
+        );
+      if (p.form === "minus-plus")
+        return (
+          <div className="flex items-center gap-3">
+            <ColumnMath rows={[p.a, p.b]} op="−" />
+            <span className="text-3xl font-black text-foreground">→</span>
+            <ColumnMath rows={["?", p.c]} op="+" />
+          </div>
+        );
+      if (p.form === "fewer-total")
+        return (
+          <div className="flex items-center gap-3">
+            <ColumnMath rows={[p.a, p.b]} op="−" />
+            <span className="text-3xl font-black text-foreground">→</span>
+            <ColumnMath rows={[p.a, "?"]} op="+" />
+          </div>
+        );
       return (
         <div className="flex items-center gap-3">
-          <ColumnMath rows={[p.a, p.b]} op="−" />
+          <ColumnMath rows={[p.a, p.b]} op="+" />
           <span className="text-3xl font-black text-foreground">→</span>
-          <ColumnMath rows={["?", p.c]} op="−" />
+          <ColumnMath rows={[p.c, "?"]} op="−" />
         </div>
       );
+    case "choose-equations":
+      return <ColumnMath rows={[p.a, p.b]} op="−" />;
     case "sum-work":
       return <ColumnMath rows={[p.a, p.b]} op="+" />;
     case "tyler":
@@ -1049,15 +1245,73 @@ function ProblemView({
         <div>
           <p className="text-lg leading-snug text-foreground">
             <NumBadge n={n} />
-            {problem.name} found {problem.a} {problem.item}. {problem.name} gave {problem.b} to a museum and {problem.c} to a friend. How many{" "}
-            {problem.item} does {problem.name} have left? Show your work.
+            {problem.form === "minus-minus"
+              ? `${problem.name} found ${problem.a} ${problem.item}. ${problem.name} gave ${problem.b} to a museum and ${problem.c} to a friend. How many ${problem.item} does ${problem.name} have left? Show your work.`
+              : problem.form === "plus-minus"
+                ? `${problem.name} has ${problem.a} building blocks. ${problem.name} gets ${problem.b} more building blocks. Then ${problem.name} uses ${problem.c} building blocks to make a barn. How many building blocks does ${problem.name} have left? Show your work.`
+                : problem.form === "minus-plus"
+                  ? `${problem.name} makes ${problem.a} fruit cups for field day. ${problem.name} hands out ${problem.b} fruit cups. Then ${problem.name} makes ${problem.c} more fruit cups. How many fruit cups does ${problem.name} have now? Show your work.`
+                  : problem.form === "fewer-total"
+                    ? `${problem.name} finds ${problem.a} leaves. ${problem.name2} finds ${problem.b} fewer leaves than ${problem.name}. How many leaves do they find in all? Show your work.`
+                    : problem.item === "horses"
+                      ? `At the fair, ${problem.a} small horses and ${problem.b} large horses win a red ribbon. ${problem.c} horses win a blue ribbon. How many fewer horses win a red ribbon than a blue ribbon? Show your work.`
+                      : `${problem.name} has ${problem.a} red marbles and ${problem.b} blue marbles. ${problem.name2} has ${problem.c} marbles. How many fewer marbles does ${problem.name} have than ${problem.name2}? Show your work.`}
           </p>
           <div className="mt-3">
-            <WritingPad label="Show your work." />
+            <WritingPad label="Show your work — step 1, then step 2." />
           </div>
           <AnswerLine value={numVal} onChange={num} />
         </div>
       );
+    case "choose-equations": {
+      const vals = answer.kind === "table" ? answer.answers : [null, null, null, null, null];
+      const set = (i: number, v: boolean) => {
+        const next = [...vals];
+        next[i] = v;
+        onAnswer({ kind: "table", answers: next });
+      };
+      return (
+        <div>
+          <p className="text-lg leading-snug text-foreground">
+            <NumBadge n={n} />
+            {problem.name} has {problem.a} {problem.itemA} and {problem.b} {problem.itemB}. Which equations can {problem.name} use to find how
+            many more {problem.itemA} than {problem.itemB} there are? Choose all the correct answers.
+          </p>
+          <p className="mt-2 text-lg leading-snug text-foreground">
+            Decide if each equation can be used. Choose Yes or No for each equation — check every row!
+          </p>
+          <table className="mt-3 w-full border-2 border-foreground/40 text-center">
+            <thead>
+              <tr className="border-b-2 border-foreground/40 bg-foreground/5">
+                <th className="px-2 py-2 text-left text-base">Equation</th>
+                <th className="px-2 py-2 text-base">Yes</th>
+                <th className="px-2 py-2 text-base">No</th>
+              </tr>
+            </thead>
+            <tbody>
+              {problem.rows.map((r, i) => (
+                <tr key={i} className="border-b border-foreground/20">
+                  <td className="px-2 py-2 text-left text-lg font-bold text-foreground">{r.text}</td>
+                  {([true, false] as const).map((v) => (
+                    <td key={String(v)} className="px-2 py-2">
+                      <button
+                        type="button"
+                        onClick={() => set(i, v)}
+                        className={`h-9 w-9 rounded-full border-2 text-base font-black transition-transform active:scale-95 ${
+                          vals[i] === v ? "border-[var(--dojo-primary)] bg-[var(--dojo-primary)] text-white" : "border-foreground/40 bg-white text-foreground"
+                        }`}
+                      >
+                        {v ? "✓" : "✕"}
+                      </button>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
     case "model-check":
       return (
         <div>
@@ -1104,7 +1358,7 @@ function ProblemView({
  * mid-test resumes where the child left off — answers, position and score
  * all come back. The handwriting on the pads is scratch work and is not
  * saved; the typed answers are what count. */
-const STORAGE_KEY = "mfd-school-test-v3";
+const STORAGE_KEY = "mfd-school-test-v4";
 
 type SavedTest = {
   problems: SchoolProblem[];
@@ -1128,6 +1382,7 @@ const KNOWN_KINDS = new Set([
   "strategy",
   "start-unknown",
   "two-step",
+  "choose-equations",
   "model-check",
   "word-missing",
 ]);
@@ -1196,14 +1451,14 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
           You got {score} out of {problems.length}!
         </h2>
         <p className="text-center text-base text-foreground/70">
-          {score === problems.length ? "Perfect — just like the real test!" : score >= 9 ? "Great work! Look at the ones you missed." : "Good practice! Try again with new numbers."}
+          {score === problems.length ? "Perfect — just like the real test!" : score >= 10 ? "Great work! Look at the ones you missed." : "Good practice! Try again with new numbers."}
         </p>
         <div className="w-full max-w-md rounded-3xl bg-white p-4 shadow md:max-w-xl">
           {problems.map((p, i) => (
             <div key={i} className="flex items-center gap-3 border-b border-foreground/10 py-2 last:border-0">
               <span className="text-xl">{results[i] ? "✅" : "❌"}</span>
               <span className="text-base font-bold text-foreground">
-                Problem {i + 1} — {p.kind === "decompose" ? "Ways to add" : p.kind === "sum-work" ? "Sum" : p.kind === "tyler" ? "Check Tyler" : p.kind === "yesno" ? "Yes or No" : p.kind === "numberline" ? "Number line" : p.kind === "word-sub" ? "Word problem" : p.kind === "missing" ? "How many more" : p.kind === "word-mc" ? "Pages" : p.kind === "start-unknown" ? "Start unknown" : p.kind === "two-step" ? "Two steps" : p.kind === "model-check" ? "Model check" : "Strategy"}
+                Problem {i + 1} — {p.kind === "decompose" ? "Ways to add" : p.kind === "sum-work" ? "Sum" : p.kind === "tyler" ? "Check Tyler" : p.kind === "yesno" ? "Yes or No" : p.kind === "numberline" ? "Number line" : p.kind === "word-sub" ? "Word problem" : p.kind === "missing" ? "How many more" : p.kind === "word-mc" ? "Pages" : p.kind === "start-unknown" ? "Start unknown" : p.kind === "two-step" ? "Two steps" : p.kind === "choose-equations" ? "Equations" : p.kind === "model-check" ? "Model check" : p.kind === "word-missing" ? "Missing part" : "Strategy"}
               </span>
             </div>
           ))}
