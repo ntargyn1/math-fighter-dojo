@@ -50,16 +50,18 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
   },
   /** Mateo (Alan's friend, Nov 20 2026): same strikes as Alan for now —
    * jab / kick / booger (monster) / block. v2: redrawn in Alan's chibi
-   * style one-to-one. v3 (Nov 20): scaled 0.80 about the feet (same fix
-   * as Alan's v4) — Alan's height now. v4 (Nov 20): squashed 0.85
-   * horizontally — he is skinnier than Alan in real life ("shhuplenkiy").
-   * No intro strip yet (idle plays at battle start). */
+   * style one-to-one. v3: scaled 0.80 about the feet (Alan's height).
+   * v4: squashed 0.85 horizontally — WRONG, made him a dwarf (short
+   * limbs). v5 (Nov 20): redrawn skinny from a new reference with long
+   * thin limbs and a wide stance, then scaled 0.80 about the feet —
+   * Alan's height, skinny, limbs as long as Alan's. No intro strip yet
+   * (idle plays at battle start). */
   mateo: {
-    idle: strip("/sprites/mateo-idle-v4.png", 12, true, 12),
-    jab: strip("/sprites/mateo-jab-v4.png", 28, false, 12),
-    kick: strip("/sprites/mateo-kick-v4.png", 12, false, 12),
-    booger: strip("/sprites/mateo-booger-v4.png", 12, false, 28),
-    block: strip("/sprites/mateo-block-v4.png", 20, true, 12),
+    idle: strip("/sprites/mateo-idle-v5.png", 12, true, 12),
+    jab: strip("/sprites/mateo-jab-v5.png", 28, false, 12),
+    kick: strip("/sprites/mateo-kick-v5.png", 12, false, 12),
+    booger: strip("/sprites/mateo-booger-v5.png", 12, false, 28),
+    block: strip("/sprites/mateo-block-v5.png", 20, true, 12),
   },
 };
 
