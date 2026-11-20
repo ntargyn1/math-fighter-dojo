@@ -5,7 +5,7 @@ import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { SchoolTestScreen } from "./SchoolTest";
 import { Fighter, LUNGE_MS, preloadAllStrips, type FighterState, type AttackMove } from "./Fighter";
-import { CHARACTERS, MONSTER_BOOGER } from "./spriteConfig";
+import { CHARACTERS, MONSTER_BOOGER, type CharacterId } from "./spriteConfig";
 import { BOSSES, defeatBoss, loadUnlocked, type BossDef } from "./campaign";
 
 type Screen =
@@ -54,9 +54,9 @@ const PUNCHES: Record<
   heavy: { label: "Booger Attack", emoji: "🤢", levelShift: 2, damage: 35, counter: 20, risk: "Hard • Miss = -20 you" },
 };
 
-/** Heavy is per-fighter: Alan's monster booger vs Bayan's cat scratch. */
-const heavyFor = (p: PlayerId) =>
-  p === "player2"
+/** Heavy is per-fighter: Alan's and Mateo's monster booger vs Bayan's cat scratch. */
+const heavyFor = (c: CharacterId) =>
+  c === "bayan"
     ? { label: "Cat Scratch", emoji: "🐱" }
     : { label: "Booger Attack", emoji: "🤢" };
 
@@ -148,9 +148,9 @@ interface RoundResult {
   label: string;
 }
 
-function resolveRound(punch: PunchKind, correct: boolean, elapsed: number, streak: number, attacker: PlayerId = "player1"): RoundResult {
+function resolveRound(punch: PunchKind, correct: boolean, elapsed: number, streak: number, attacker: PlayerId = "player1", attackerChar: CharacterId = "alan"): RoundResult {
   const p = PUNCHES[punch];
-  const heavy = heavyFor(attacker);
+  const heavy = heavyFor(attackerChar);
   const label = punch === "heavy" ? heavy.label : p.label;
   if (!correct) {
     return {
@@ -530,16 +530,17 @@ function BossFighter({
   );
 }
 
-function FighterSlot({ fx, side, color, bossEmoji }: { fx: FightFx; side: Side; color: string; bossEmoji?: string }) {
+function FighterSlot({ fx, side, color, bossEmoji, character }: { fx: FightFx; side: Side; color: string; bossEmoji?: string; character?: CharacterId }) {
   // Left fighter (bottom) faces right; right fighter (top) is mirrored to face left.
   const flipped = side === "top";
+  const fighter = character ?? (flipped ? "bayan" : "alan");
   return (
     <div className="relative flex h-full w-[32%] items-end justify-center">
       <div className="h-[85%] w-full">
         {bossEmoji && flipped ? (
           <BossFighter emoji={bossEmoji} state={fx.states[side]} onAnimationEnd={(s) => fx.onEnd(side, s)} />
         ) : (
-          <Fighter state={fx.states[side]} facing={flipped ? "left" : "right"} character={flipped ? "bayan" : "alan"} color={color} onAnimationEnd={(s) => fx.onEnd(side, s)} />
+          <Fighter state={fx.states[side]} facing={flipped ? "left" : "right"} character={fighter} color={color} onAnimationEnd={(s) => fx.onEnd(side, s)} />
         )}
       </div>
       {fx.bursts
@@ -584,19 +585,22 @@ function Arena({
   rightColor,
   banner,
   bossEmoji,
+  characters,
 }: {
   fx: FightFx;
   leftColor: string;
   rightColor: string;
   banner?: React.ReactNode;
   bossEmoji?: string;
+  /** Two-player picks; when omitted the classic Alan (bottom) vs Bayan (top). */
+  characters?: { bottom: CharacterId; top: CharacterId };
 }) {
   return (
     <div className="relative flex aspect-[16/10] w-full items-end justify-between overflow-hidden rounded-3xl bg-white/50 px-3 pb-3 shadow-inner">
       <div className="absolute inset-x-6 bottom-3 h-1 rounded-full bg-foreground/15" />
       {banner && <div className="absolute inset-x-0 top-2 z-10 flex justify-center">{banner}</div>}
-      <FighterSlot fx={fx} side="bottom" color={leftColor} />
-      <FighterSlot fx={fx} side="top" color={rightColor} bossEmoji={bossEmoji} />
+      <FighterSlot fx={fx} side="bottom" color={leftColor} character={characters?.bottom} />
+      <FighterSlot fx={fx} side="top" color={rightColor} bossEmoji={bossEmoji} character={characters?.top} />
       {fx.monsters.map((m) => (
         <MonsterRunner key={m.id} from={m.side} />
       ))}
@@ -1204,6 +1208,30 @@ function LevelSlider({ label, value, onChange, accent }: { label: string; value:
   );
 }
 
+const CHARACTER_NAMES: Record<CharacterId, string> = { alan: "Alan", bayan: "Bayan", mateo: "Mateo" };
+
+/** Two-player fighter pick: three buttons, the selected one highlighted. */
+function CharacterPicker({ label, value, onChange, accent }: { label: string; value: CharacterId; onChange: (c: CharacterId) => void; accent: string }) {
+  return (
+    <div className="w-full rounded-3xl bg-white/70 p-4 shadow-inner">
+      <div className="text-lg font-black" style={{ color: accent }}>{label}</div>
+      <div className="mt-3 flex gap-2">
+        {(Object.keys(CHARACTER_NAMES) as CharacterId[]).map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onChange(c)}
+            className={`flex-1 rounded-2xl px-3 py-2 text-lg font-black shadow ${value === c ? "text-white" : "bg-white text-foreground/70"}`}
+            style={value === c ? { backgroundColor: accent } : undefined}
+          >
+            {CHARACTER_NAMES[c]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TwoPlayerBattleScreen({
   level,
   onFinish,
@@ -1215,6 +1243,8 @@ function TwoPlayerBattleScreen({
 }) {
   const [setup, setSetup] = useState(true);
   const [levels, setLevels] = useState<Record<PlayerId, number>>({ player1: level, player2: level });
+  /** Two-player fighter picks (Mateo added Nov 20 2026). Defaults keep the classic Alan vs Bayan. */
+  const [chars, setChars] = useState<Record<PlayerId, CharacterId>>({ player1: "alan", player2: "bayan" });
   const [health, setHealth] = useState<Record<PlayerId, number>>({ player1: TP_START_HEALTH, player2: TP_START_HEALTH });
   const [streaks, setStreaks] = useState<Record<PlayerId, number>>({ player1: 0, player2: 0 });
   const [turn, setTurn] = useState<PlayerId>("player1");
@@ -1223,19 +1253,19 @@ function TwoPlayerBattleScreen({
   const fx = useFightFx();
   const mounted = useMounted();
 
-  // Alan (player 1, bottom) and Bayan (player 2, top) walk in once when the
-  // fight starts, then idle takes over. Wait for both intro strips to be
-  // decoded first (see BattleScreen).
+  // The picked fighters walk in once when the fight starts, then idle takes
+  // over. Wait for both intro strips to be decoded first (see BattleScreen).
+  // A fighter with no intro strip (Mateo) just shows idle — Fighter handles it.
   const introPlayed = useRef(false);
   useEffect(() => {
     if (setup || introPlayed.current) return;
     introPlayed.current = true;
     let alive = true;
     void (async () => {
-      const alanSrc = CHARACTERS.alan.intro?.src;
-      const bayanSrc = CHARACTERS.bayan.intro?.src;
-      if (alanSrc) await waitForImage(alanSrc);
-      if (bayanSrc) await waitForImage(bayanSrc);
+      const bottomSrc = CHARACTERS[chars.player1].intro?.src;
+      const topSrc = CHARACTERS[chars.player2].intro?.src;
+      if (bottomSrc) await waitForImage(bottomSrc);
+      if (topSrc) await waitForImage(topSrc);
       if (alive) {
         fx.showVsIntro();
         void fx.play("bottom", "intro");
@@ -1256,22 +1286,25 @@ function TwoPlayerBattleScreen({
     round.setPhase("resolving");
     const attacker = turn;
     const defender: PlayerId = attacker === "player1" ? "player2" : "player1";
-    const r = resolveRound(round.punch, correct, round.elapsed(), streaks[attacker], attacker);
+    const r = resolveRound(round.punch, correct, round.elapsed(), streaks[attacker], attacker, chars[attacker]);
     setStreaks((s) => ({ ...s, [attacker]: r.newStreak }));
     const next = { ...health };
+    // Heavy effect is per-fighter: Bayan's cat scratch, everyone else's booger monster.
+    const atkEffect = chars[attacker] === "bayan" ? "scratch" : "slime";
+    const defEffect = chars[defender] === "bayan" ? "scratch" : "slime";
     if (r.hit) {
       if (r.ultimate) playUltimateAnimation();
       sfx.punch(r.ultimate || round.punch === "heavy");
       next[defender] -= r.damage;
       setHealth(next);
-      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab", "hit", r.ultimate || round.punch === "heavy" ? (attacker === "player1" ? "slime" : "scratch") : "none");
+      await fx.strike(sideOf(attacker), `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab", "hit", r.ultimate || round.punch === "heavy" ? atkEffect : "none");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
       sfx.punch(round.punch === "heavy");
       next[attacker] -= r.counter;
       setHealth(next);
-      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "booger" : "kick", "hit", round.punch === "heavy" ? (defender === "player1" ? "slime" : "scratch") : "none");
+      await fx.strike(sideOf(defender), `-${r.counter}`, true, round.punch === "heavy" ? "booger" : "kick", "hit", round.punch === "heavy" ? defEffect : "none");
     } else {
       sfx.whoosh();
       await fx.strike(sideOf(attacker), "Blocked!", false, "jab", "block");
@@ -1300,9 +1333,11 @@ function TwoPlayerBattleScreen({
       <div className="flex min-h-screen flex-col items-center gap-4 bg-[var(--dojo-bg)] px-6 py-8">
         <h2 className="text-3xl font-black text-[var(--dojo-primary)]">Two Players</h2>
         <p className="text-center text-sm text-foreground/70">
-          Each player picks their own level. Damage is the same for everyone — level only changes how hard the math is!
+          Each player picks their fighter and their own level. Damage is the same for everyone — level only changes how hard the math is!
         </p>
+        <CharacterPicker label="🌸 Player 2 — fighter" value={chars.player2} accent="#ec4899" onChange={(c) => setChars((x) => ({ ...x, player2: c }))} />
         <LevelSlider label="🌸 Player 2" value={levels.player2} accent="#ec4899" onChange={(n) => setLevels((l) => ({ ...l, player2: n }))} />
+        <CharacterPicker label="🌊 Player 1 — fighter" value={chars.player1} accent="#0ea5e9" onChange={(c) => setChars((x) => ({ ...x, player1: c }))} />
         <LevelSlider label="🌊 Player 1" value={levels.player1} accent="#0ea5e9" onChange={(n) => setLevels((l) => ({ ...l, player1: n }))} />
         <div className="mt-2 flex w-full flex-col gap-3">
           <BigButton variant="primary" onClick={() => setSetup(false)}>
@@ -1338,7 +1373,7 @@ function TwoPlayerBattleScreen({
       >
         <FastMeter streak={streaks[p]} />
         {round.phase === "choose" ? (
-          <PunchPicker title={`${label}: choose your punch!`} heavy={heavyFor(p)} onPick={(k) => round.begin(k, levels[p])} />
+          <PunchPicker title={`${label}: choose your punch!`} heavy={heavyFor(chars[p])} onPick={(k) => round.begin(k, levels[p])} />
         ) : (
           <QuestionCard
             question={round.question}
@@ -1360,7 +1395,7 @@ function TwoPlayerBattleScreen({
   return (
     <motion.div animate={fx.stage} className="flex min-h-screen flex-col gap-2 bg-[var(--dojo-bg)] px-3 py-3">
       <KOOverlay show={fx.ko !== null} />
-      <HealthBar value={health.player2} max={TP_START_HEALTH} color="#ec4899" label={`🌸 Player 2 • Lv ${levels.player2}`} />
+      <HealthBar value={health.player2} max={TP_START_HEALTH} color="#ec4899" label={`🌸 Player 2 • ${CHARACTER_NAMES[chars.player2]} • Lv ${levels.player2}`} />
       {zone("player2")}
 
       <div className="flex flex-1 flex-col justify-center">
@@ -1368,6 +1403,7 @@ function TwoPlayerBattleScreen({
           fx={fx}
           leftColor="#0ea5e9"
           rightColor="#ec4899"
+          characters={{ bottom: chars.player1, top: chars.player2 }}
           banner={
             <div className={`rounded-full px-4 py-1 text-sm font-black text-white shadow ${isP1 ? "bg-sky-500" : "bg-pink-500"}`}>
               {isP1 ? "PLAYER 1 ATTACKS" : "PLAYER 2 ATTACKS"}
@@ -1377,7 +1413,7 @@ function TwoPlayerBattleScreen({
       </div>
 
       {zone("player1")}
-      <HealthBar value={health.player1} max={TP_START_HEALTH} color="#0ea5e9" label={`🌊 Player 1 • Lv ${levels.player1}`} />
+      <HealthBar value={health.player1} max={TP_START_HEALTH} color="#0ea5e9" label={`🌊 Player 1 • ${CHARACTER_NAMES[chars.player1]} • Lv ${levels.player1}`} />
       <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
         Back to home
       </button>

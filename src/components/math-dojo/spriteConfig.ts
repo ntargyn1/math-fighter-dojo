@@ -12,7 +12,7 @@ export interface StripConfig {
   loop: boolean;
 }
 
-export type CharacterId = "alan" | "bayan";
+export type CharacterId = "alan" | "bayan" | "mateo";
 export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko";
 
 const FRAME = { frames: 6, frameWidth: 326, frameHeight: 348 } as const;
@@ -47,6 +47,16 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     kick: strip("/sprites/bayan-jumpkick-v1.png", 12, false, 12),
     booger: strip("/sprites/bayan-cat-v2.png", 12, false, 28),
     block: strip("/sprites/bayan-block-v2.png", 20, true, 12),
+  },
+  /** Mateo (Alan's friend, Nov 20 2026): same strikes as Alan for now —
+   * jab / kick / booger (monster) / block. No intro strip yet (idle plays
+   * at battle start); booger + block are still-image poses, not video. */
+  mateo: {
+    idle: strip("/sprites/mateo-idle-v1.png", 12, true, 12),
+    jab: strip("/sprites/mateo-jab-v1.png", 28, false, 12),
+    kick: strip("/sprites/mateo-kick-v1.png", 12, false, 12),
+    booger: strip("/sprites/mateo-booger-v1.png", 12, false, 28),
+    block: strip("/sprites/mateo-block-v1.png", 20, true, 12),
   },
 };
 
