@@ -12,7 +12,7 @@ export interface StripConfig {
   loop: boolean;
 }
 
-export type CharacterId = "alan" | "bayan" | "mateo";
+export type CharacterId = "alan" | "bayan" | "mateo" | "kash";
 export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko";
 
 const FRAME = { frames: 6, frameWidth: 326, frameHeight: 348 } as const;
@@ -60,6 +60,20 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     kick: strip("/sprites/mateo-kick-v9.png", 12, false, 12),
     booger: strip("/sprites/mateo-booger-v9.png", 12, false, 28),
     block: strip("/sprites/mateo-block-v9.png", 20, true, 12),
+  },
+  /** Kash (Alan's friend, Nov 20 2026): same scheme as Mateo — Alan's
+   * body with Kash's face and clothes. Short light-brown hair, dark
+   * glasses, dark grey Happy Halloween Pikachu shirt, grey-blue shorts.
+   * Heavy is NOT a booger: the "booger" slot holds the Roblox
+   * sledgehammer strip (28f) — Kash glows, transforms into a blocky
+   * Roblox avatar, and slams a huge red sledgehammer. Scaled 0.80
+   * about the feet (Alan's height). No intro strip yet. */
+  kash: {
+    idle: strip("/sprites/kash-idle-v1.png", 12, true, 12),
+    jab: strip("/sprites/kash-jab-v1.png", 28, false, 12),
+    kick: strip("/sprites/kash-kick-v1.png", 12, false, 12),
+    booger: strip("/sprites/kash-roblox-v1.png", 12, false, 28),
+    block: strip("/sprites/kash-block-v1.png", 20, true, 12),
   },
 };
 
