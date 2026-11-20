@@ -432,14 +432,17 @@ function SlimeSplat({ side }: { side: Side }) {
 function MonsterRunner({ from }: { from: Side }) {
   const n = MONSTER_BOOGER.frames;
   const ms = (n / MONSTER_BOOGER.fps) * 1000;
-  // The monster always runs left -> right (Alan is the left fighter).
-  void from;
+  // The monster runs FROM the attacker TOWARD the defender. Bottom (left,
+  // Player 1) throws right; top (right, Player 2 — e.g. Mateo) throws left,
+  // so the monster runs right -> left and is flipped to face left. Before
+  // this it always ran left -> right, so a right-side throw ran backwards.
+  const rightToLeft = from === "top";
   return (
     <motion.div
       className="pointer-events-none absolute bottom-3 z-20"
       style={{ width: "42%", aspectRatio: `${MONSTER_BOOGER.frameWidth} / ${MONSTER_BOOGER.frameHeight}` }}
-      initial={{ left: "6%", opacity: 1 }}
-      animate={{ left: "52%", opacity: [1, 1, 1, 0] }}
+      initial={{ left: rightToLeft ? "52%" : "6%", opacity: 1, scaleX: rightToLeft ? -1 : 1 }}
+      animate={{ left: rightToLeft ? "6%" : "52%", opacity: [1, 1, 1, 0], scaleX: rightToLeft ? -1 : 1 }}
       transition={{ left: { duration: 1.35, ease: "linear" }, opacity: { duration: 1.6, times: [0, 0.8, 0.9, 1] } }}
     >
       <div className="h-full w-full overflow-hidden">
@@ -1210,6 +1213,14 @@ function LevelSlider({ label, value, onChange, accent }: { label: string; value:
 
 const CHARACTER_NAMES: Record<CharacterId, string> = { alan: "Alan", bayan: "Bayan", mateo: "Mateo" };
 
+/** Theme follows the FIGHTER, not the player slot: Bayan (girl) is pink,
+ * Alan and Mateo (boys) are blue — so Mateo is never pink. */
+const CHARACTER_THEME: Record<CharacterId, { color: string; emoji: string }> = {
+  alan: { color: "#0ea5e9", emoji: "🌊" },
+  bayan: { color: "#ec4899", emoji: "🌸" },
+  mateo: { color: "#0ea5e9", emoji: "🌊" },
+};
+
 /** Two-player fighter pick: three buttons, the selected one highlighted. */
 function CharacterPicker({ label, value, onChange, accent }: { label: string; value: CharacterId; onChange: (c: CharacterId) => void; accent: string }) {
   return (
@@ -1335,10 +1346,10 @@ function TwoPlayerBattleScreen({
         <p className="text-center text-sm text-foreground/70">
           Each player picks their fighter and their own level. Damage is the same for everyone — level only changes how hard the math is!
         </p>
-        <CharacterPicker label="🌸 Player 2 — fighter" value={chars.player2} accent="#ec4899" onChange={(c) => setChars((x) => ({ ...x, player2: c }))} />
-        <LevelSlider label="🌸 Player 2" value={levels.player2} accent="#ec4899" onChange={(n) => setLevels((l) => ({ ...l, player2: n }))} />
-        <CharacterPicker label="🌊 Player 1 — fighter" value={chars.player1} accent="#0ea5e9" onChange={(c) => setChars((x) => ({ ...x, player1: c }))} />
-        <LevelSlider label="🌊 Player 1" value={levels.player1} accent="#0ea5e9" onChange={(n) => setLevels((l) => ({ ...l, player1: n }))} />
+        <CharacterPicker label={`${CHARACTER_THEME[chars.player2].emoji} Player 2 — fighter`} value={chars.player2} accent={CHARACTER_THEME[chars.player2].color} onChange={(c) => setChars((x) => ({ ...x, player2: c }))} />
+        <LevelSlider label={`${CHARACTER_THEME[chars.player2].emoji} Player 2`} value={levels.player2} accent={CHARACTER_THEME[chars.player2].color} onChange={(n) => setLevels((l) => ({ ...l, player2: n }))} />
+        <CharacterPicker label={`${CHARACTER_THEME[chars.player1].emoji} Player 1 — fighter`} value={chars.player1} accent={CHARACTER_THEME[chars.player1].color} onChange={(c) => setChars((x) => ({ ...x, player1: c }))} />
+        <LevelSlider label={`${CHARACTER_THEME[chars.player1].emoji} Player 1`} value={levels.player1} accent={CHARACTER_THEME[chars.player1].color} onChange={(n) => setLevels((l) => ({ ...l, player1: n }))} />
         <div className="mt-2 flex w-full flex-col gap-3">
           <BigButton variant="primary" onClick={() => setSetup(false)}>
             🥊 Fight!
@@ -1356,7 +1367,7 @@ function TwoPlayerBattleScreen({
   const zone = (p: PlayerId) => {
     const active = turn === p;
     const label = p === "player1" ? "Player 1" : "Player 2";
-    const tint = p === "player1" ? "border-sky-500 bg-sky-50" : "border-pink-500 bg-pink-50";
+    const tint = chars[p] === "bayan" ? "border-pink-500 bg-pink-50" : "border-sky-500 bg-sky-50";
     if (!active) {
       return (
         <div className="rounded-2xl border-2 border-dashed border-foreground/15 px-3 py-2 text-center text-sm font-bold text-foreground/50">
@@ -1380,7 +1391,7 @@ function TwoPlayerBattleScreen({
             options={round.options}
             timeRemaining={round.timeRemaining}
             timerTotal={round.timerTotal}
-            timerColor={p === "player1" ? "#0ea5e9" : "#ec4899"}
+            timerColor={CHARACTER_THEME[chars[p]].color}
             onAnswer={(v) => void finish(v === round.question.correctAnswer)}
             disabled={round.phase !== "question"}
             answerVariant={p === "player1" ? "p1" : "p2"}
@@ -1395,17 +1406,17 @@ function TwoPlayerBattleScreen({
   return (
     <motion.div animate={fx.stage} className="flex min-h-screen flex-col gap-2 bg-[var(--dojo-bg)] px-3 py-3">
       <KOOverlay show={fx.ko !== null} />
-      <HealthBar value={health.player2} max={TP_START_HEALTH} color="#ec4899" label={`🌸 Player 2 • ${CHARACTER_NAMES[chars.player2]} • Lv ${levels.player2}`} />
+      <HealthBar value={health.player2} max={TP_START_HEALTH} color={CHARACTER_THEME[chars.player2].color} label={`${CHARACTER_THEME[chars.player2].emoji} Player 2 • ${CHARACTER_NAMES[chars.player2]} • Lv ${levels.player2}`} />
       {zone("player2")}
 
       <div className="flex flex-1 flex-col justify-center">
         <Arena
           fx={fx}
-          leftColor="#0ea5e9"
-          rightColor="#ec4899"
+          leftColor={CHARACTER_THEME[chars.player1].color}
+          rightColor={CHARACTER_THEME[chars.player2].color}
           characters={{ bottom: chars.player1, top: chars.player2 }}
           banner={
-            <div className={`rounded-full px-4 py-1 text-sm font-black text-white shadow ${isP1 ? "bg-sky-500" : "bg-pink-500"}`}>
+            <div className="rounded-full px-4 py-1 text-sm font-black text-white shadow" style={{ backgroundColor: CHARACTER_THEME[chars[turn]].color }}>
               {isP1 ? "PLAYER 1 ATTACKS" : "PLAYER 2 ATTACKS"}
             </div>
           }
@@ -1413,7 +1424,7 @@ function TwoPlayerBattleScreen({
       </div>
 
       {zone("player1")}
-      <HealthBar value={health.player1} max={TP_START_HEALTH} color="#0ea5e9" label={`🌊 Player 1 • ${CHARACTER_NAMES[chars.player1]} • Lv ${levels.player1}`} />
+      <HealthBar value={health.player1} max={TP_START_HEALTH} color={CHARACTER_THEME[chars.player1].color} label={`${CHARACTER_THEME[chars.player1].emoji} Player 1 • ${CHARACTER_NAMES[chars.player1]} • Lv ${levels.player1}`} />
       <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
         Back to home
       </button>

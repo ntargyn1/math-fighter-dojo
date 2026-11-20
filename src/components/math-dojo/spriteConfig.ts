@@ -49,14 +49,16 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     block: strip("/sprites/bayan-block-v2.png", 20, true, 12),
   },
   /** Mateo (Alan's friend, Nov 20 2026): same strikes as Alan for now —
-   * jab / kick / booger (monster) / block. No intro strip yet (idle plays
-   * at battle start); booger + block are still-image poses, not video. */
+   * jab / kick / booger (monster) / block. v2 (Nov 20): redrawn in Alan's
+   * chibi style one-to-one (big head, small body) — all five strips are
+   * real video now, no still-image poses. No intro strip yet (idle plays
+   * at battle start). */
   mateo: {
-    idle: strip("/sprites/mateo-idle-v1.png", 12, true, 12),
-    jab: strip("/sprites/mateo-jab-v1.png", 28, false, 12),
-    kick: strip("/sprites/mateo-kick-v1.png", 12, false, 12),
-    booger: strip("/sprites/mateo-booger-v1.png", 12, false, 28),
-    block: strip("/sprites/mateo-block-v1.png", 20, true, 12),
+    idle: strip("/sprites/mateo-idle-v2.png", 12, true, 12),
+    jab: strip("/sprites/mateo-jab-v2.png", 28, false, 12),
+    kick: strip("/sprites/mateo-kick-v2.png", 12, false, 12),
+    booger: strip("/sprites/mateo-booger-v2.png", 12, false, 28),
+    block: strip("/sprites/mateo-block-v2.png", 20, true, 12),
   },
 };
 
