@@ -49,17 +49,18 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     block: strip("/sprites/bayan-block-v2.png", 20, true, 12),
   },
   /** Mateo (Alan's friend, Nov 20 2026): same strikes as Alan for now —
-   * jab / kick / booger (monster) / block. v5: redrawn skinny with long
-   * limbs — TOO skinny. v6 (Nov 20): v5 stretched 1.12x horizontally so
-   * the limbs match Alan's exactly (shoulder 129 vs Alan's 131, jab
-   * reach 290 vs 295). Alan's height, Alan's limbs. No intro strip yet
-   * (idle plays at battle start). */
+   * jab / kick / booger (monster) / block. v6: v5 stretched 1.12x —
+   * WRONG, just stretched the face. v7 (Nov 20): Alan's character with
+   * Mateo's face and clothes — Alan's exact body and limbs, Mateo's
+   * curly hair, face, white shirt, dark blue shorts. Scaled 0.80 about
+   * the feet (Alan's height). No intro strip yet (idle plays at battle
+   * start). */
   mateo: {
-    idle: strip("/sprites/mateo-idle-v6.png", 12, true, 12),
-    jab: strip("/sprites/mateo-jab-v6.png", 28, false, 12),
-    kick: strip("/sprites/mateo-kick-v6.png", 12, false, 12),
-    booger: strip("/sprites/mateo-booger-v6.png", 12, false, 28),
-    block: strip("/sprites/mateo-block-v6.png", 20, true, 12),
+    idle: strip("/sprites/mateo-idle-v7.png", 12, true, 12),
+    jab: strip("/sprites/mateo-jab-v7.png", 28, false, 12),
+    kick: strip("/sprites/mateo-kick-v7.png", 12, false, 12),
+    booger: strip("/sprites/mateo-booger-v7.png", 12, false, 28),
+    block: strip("/sprites/mateo-block-v7.png", 20, true, 12),
   },
 };
 
