@@ -53,9 +53,11 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * lighter skin. v9 (Nov 20): v8 + slightly snub nose. Alan's exact
    * body and limbs, Mateo's curly hair, v5 face, snub nose, white
    * shirt, dark blue shorts, light skin. Scaled 0.80 about the feet
-   * (Alan's height). No intro strip yet (idle plays at battle start). */
+   * (Alan's height). No intro strip yet (idle plays at battle start).
+   * v10 (Nov 20): idle rebuilt — stable stance like Alan's (only
+   * frames 1-6, no sideways lean; feet and left edge steady). */
   mateo: {
-    idle: strip("/sprites/mateo-idle-v9.png", 12, true, 12),
+    idle: strip("/sprites/mateo-idle-v10.png", 12, true, 12),
     jab: strip("/sprites/mateo-jab-v9.png", 28, false, 12),
     kick: strip("/sprites/mateo-kick-v9.png", 12, false, 12),
     booger: strip("/sprites/mateo-booger-v9.png", 12, false, 28),
@@ -68,9 +70,11 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * sledgehammer strip (28f). v1: full Roblox body. v2 (Nov 20): Kash's
    * OWN body kept — only the head becomes the Roblox box head and the
    * huge red sledgehammer is added; he slams it down. Scaled 0.80
-   * about the feet (Alan's height). No intro strip yet. */
+   * about the feet (Alan's height). No intro strip yet. Idle v2
+   * (Nov 20): rebuilt — stable stance like Alan's (only frames 1-6,
+   * no sideways lean; feet and left edge steady). */
   kash: {
-    idle: strip("/sprites/kash-idle-v1.png", 12, true, 12),
+    idle: strip("/sprites/kash-idle-v2.png", 12, true, 12),
     jab: strip("/sprites/kash-jab-v1.png", 28, false, 12),
     kick: strip("/sprites/kash-kick-v1.png", 12, false, 12),
     booger: strip("/sprites/kash-roblox-v2.png", 12, false, 28),
