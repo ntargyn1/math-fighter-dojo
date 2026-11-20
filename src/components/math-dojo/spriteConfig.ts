@@ -65,14 +65,15 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * body with Kash's face and clothes. Short light-brown hair, dark
    * glasses, dark grey Happy Halloween Pikachu shirt, grey-blue shorts.
    * Heavy is NOT a booger: the "booger" slot holds the Roblox
-   * sledgehammer strip (28f) — Kash glows, transforms into a blocky
-   * Roblox avatar, and slams a huge red sledgehammer. Scaled 0.80
+   * sledgehammer strip (28f). v1: full Roblox body. v2 (Nov 20): Kash's
+   * OWN body kept — only the head becomes the Roblox box head and the
+   * huge red sledgehammer is added; he slams it down. Scaled 0.80
    * about the feet (Alan's height). No intro strip yet. */
   kash: {
     idle: strip("/sprites/kash-idle-v1.png", 12, true, 12),
     jab: strip("/sprites/kash-jab-v1.png", 28, false, 12),
     kick: strip("/sprites/kash-kick-v1.png", 12, false, 12),
-    booger: strip("/sprites/kash-roblox-v1.png", 12, false, 28),
+    booger: strip("/sprites/kash-roblox-v2.png", 12, false, 28),
     block: strip("/sprites/kash-block-v1.png", 20, true, 12),
   },
 };

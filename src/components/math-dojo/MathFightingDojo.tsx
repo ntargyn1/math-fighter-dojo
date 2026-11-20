@@ -194,7 +194,7 @@ function playUltimateAnimation() {
 // slime/scratch mark land on the actual contact frame.
 const ALAN_BOOGER_IMPACT_MS = 2000;
 const BAYAN_CAT_IMPACT_MS = 1400;
-const KASH_ROBLOX_IMPACT_MS = 1650; // Kash's hammer slams on strip frame ~20 (28f @ 12fps).
+const KASH_ROBLOX_IMPACT_MS = 1400; // Kash's hammer slams on strip frame ~17 (28f @ 12fps).
 
 // ---------- Fight FX (framer-motion) ----------
 
