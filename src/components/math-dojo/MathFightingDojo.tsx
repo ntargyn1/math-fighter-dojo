@@ -54,16 +54,19 @@ const PUNCHES: Record<
   heavy: { label: "Booger Attack", emoji: "🤢", levelShift: 2, damage: 35, counter: 20, risk: "Hard • Miss = -20 you" },
 };
 
-/** Heavy is per-fighter: Alan's and Mateo's monster booger, Bayan's cat
- * scratch, Kash's Roblox sledgehammer, Luca's Grim Reaper scythe. */
+/** Heavy is per-fighter: Alan's Shark Bite (his own hand-drawn sheet),
+ * Mateo's monster booger, Bayan's cat scratch, Kash's Roblox sledgehammer,
+ * Luca's Grim Reaper scythe. */
 const heavyFor = (c: CharacterId) =>
-  c === "bayan"
-    ? { label: "Cat Scratch", emoji: "🐱" }
-    : c === "kash"
-      ? { label: "Roblox Hammer", emoji: "🔨" }
-      : c === "luca"
-        ? { label: "Grim Reaper", emoji: "💀" }
-        : { label: "Booger Attack", emoji: "🤢" };
+  c === "alan"
+    ? { label: "Shark Bite", emoji: "🦈" }
+    : c === "bayan"
+      ? { label: "Cat Scratch", emoji: "🐱" }
+      : c === "kash"
+        ? { label: "Roblox Hammer", emoji: "🔨" }
+        : c === "luca"
+          ? { label: "Grim Reaper", emoji: "💀" }
+          : { label: "Booger Attack", emoji: "🤢" };
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -185,16 +188,17 @@ function playUltimateAnimation() {
   console.debug("ULTIMATE!");
 }
 
-// Booger Attack: the monster's slap lands late in the 1.33s strip (its fist
-// is out at ~0.9s, confirmed live) — the hit feedback must wait for it. At
-// LUNGE_MS (120ms) Alan is still picking his nose and the monster hasn't
-// appeared, so the defender would flinch at nothing and the slap would land
-// on an idle fighter. The contact frame differs per fighter (the heavy
-// strips are 28 frames / ~2.33s now): Alan's monster slaps on strip frames
-// 25-26 (~2.0s), Bayan's cat starts scratching on strip frame 17 (~1.33s).
-// Each fighter gets its own delay, so the popup, burst, flinch and the
-// slime/scratch mark land on the actual contact frame.
-const ALAN_BOOGER_IMPACT_MS = 2000;
+// Heavy impact: the hit feedback must wait for the contact frame. At
+// LUNGE_MS (120ms) the attacker is still winding up and the monster/cat/
+// hammer/scythe/shark isn't there yet, so the defender would flinch at
+// nothing. The contact frame differs per fighter (the heavy strips are
+// 28 frames / ~2.33s now): Alan's shark jaws snap shut on strip frame 26
+// (~2.1s), Mateo's monster slaps on strip frames 25-26 (~2.0s), Bayan's
+// cat starts scratching on strip frame 17 (~1.33s). Each fighter gets its
+// own delay, so the popup, burst, flinch and the slime/scratch mark land
+// on the actual contact frame.
+const ALAN_BOOGER_IMPACT_MS = 2000; // Mateo's monster slaps (~2.0s).
+const ALAN_SHARK_IMPACT_MS = 2100; // Alan's shark jaws snap shut on strip frame 26 (~2.08s).
 const BAYAN_CAT_IMPACT_MS = 1400;
 const KASH_ROBLOX_IMPACT_MS = 1900; // Kash's hammer hits the ground on strip frame ~23 (28f @ 12fps, v4).
 const LUCA_REAPER_IMPACT_MS = 1450; // Luca's scythe reaches its lowest sweep on strip frame ~17 (28f @ 12fps, v1).
@@ -320,29 +324,34 @@ function useFightFx() {
 
   // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
   // effect: which visible hit mark the heavy leaves on the defender —
-  // "slime" for Alan's monster booger, "scratch" for Bayan's cat, "hammer"
-  // for Kash's Roblox sledgehammer, "scythe" for Luca's Grim Reaper,
-  // "none" for the boss (an emoji, it has no monster or cat).
-  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit", effect: "slime" | "scratch" | "hammer" | "scythe" | "none" = "none") => {
+  // "bite" for Alan's Shark Bite (jaws snap shut, no monster, no mark —
+  // the CHOMP is in the strip), "slime" for Mateo's monster booger,
+  // "scratch" for Bayan's cat, "hammer" for Kash's Roblox sledgehammer,
+  // "scythe" for Luca's Grim Reaper, "none" for the boss (an emoji, it
+  // has no monster or cat).
+  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit", effect: "slime" | "scratch" | "hammer" | "scythe" | "bite" | "none" = "none") => {
     const defender: Side = attacker === "top" ? "bottom" : "top";
-    // The heavy's contact frame differs per fighter (Alan's monster slaps
-    // at ~2.0s, Bayan's cat starts scratching at ~1.33s, Kash's hammer
-    // slams at ~1.9s, Luca's scythe sweeps lowest at ~1.45s), so the hit
-    // feedback waits for the attacker's contact — not for LUNGE_MS (when
-    // the monster/cat/hammer/scythe isn't there yet) and not for a shared
-    // guess. The boss has no monster or cat (effect "none"), so its
-    // counter is a plain lunge and the feedback fires at LUNGE_MS.
+    // The heavy's contact frame differs per fighter (Alan's shark jaws
+    // snap shut at ~2.1s, Mateo's monster slaps at ~2.0s, Bayan's cat
+    // starts scratching at ~1.33s, Kash's hammer slams at ~1.9s, Luca's
+    // scythe sweeps lowest at ~1.45s), so the hit feedback waits for the
+    // attacker's contact — not for LUNGE_MS (when the monster/cat/
+    // hammer/scythe/shark isn't there yet) and not for a shared guess.
+    // The boss has no monster or cat (effect "none"), so its counter is
+    // a plain lunge and the feedback fires at LUNGE_MS.
     const impactMs =
       move === "booger"
-        ? effect === "slime"
-          ? ALAN_BOOGER_IMPACT_MS
-          : effect === "scratch"
-            ? BAYAN_CAT_IMPACT_MS
-            : effect === "hammer"
-              ? KASH_ROBLOX_IMPACT_MS
-              : effect === "scythe"
-                ? LUCA_REAPER_IMPACT_MS
-                : LUNGE_MS
+        ? effect === "bite"
+          ? ALAN_SHARK_IMPACT_MS
+          : effect === "slime"
+            ? ALAN_BOOGER_IMPACT_MS
+            : effect === "scratch"
+              ? BAYAN_CAT_IMPACT_MS
+              : effect === "hammer"
+                ? KASH_ROBLOX_IMPACT_MS
+                : effect === "scythe"
+                  ? LUCA_REAPER_IMPACT_MS
+                  : LUNGE_MS
         : LUNGE_MS;
     const atk = play(attacker, move);
     // Alan's Booger Attack: the monster runs on its own now (it is no
@@ -1082,7 +1091,7 @@ function BattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       npc -= r.damage;
       setNpcHealth(npc);
-      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab", "hit", r.ultimate || round.punch === "heavy" ? "slime" : "none");
+      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab", "hit", r.ultimate || round.punch === "heavy" ? "bite" : "none");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
@@ -1324,7 +1333,7 @@ function TwoPlayerBattleScreen({
     const next = { ...health };
     // Heavy effect is per-fighter: Bayan's cat scratch, Kash's Roblox
     // hammer, everyone else's booger monster.
-    const effectFor = (c: CharacterId) => (c === "bayan" ? "scratch" : c === "kash" ? "hammer" : c === "luca" ? "scythe" : "slime");
+    const effectFor = (c: CharacterId) => (c === "alan" ? "bite" : c === "bayan" ? "scratch" : c === "kash" ? "hammer" : c === "luca" ? "scythe" : "slime");
     const atkEffect = effectFor(chars[attacker]);
     const defEffect = effectFor(chars[defender]);
     if (r.hit) {

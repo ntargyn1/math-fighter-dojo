@@ -39,7 +39,12 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     intro: strip("/sprites/alan-intro-v2.png", 10, false, 10),
     jab: strip("/sprites/alan-jab-v7.png", 28, false, 12),
     kick: strip("/sprites/alan-kick-v2.png", 12, false, 12),
-    booger: strip("/sprites/alan-booger-v5.png", 12, false, 28),
+    // Nov 21 2026: Alan's heavy is now the SHARK BITE (his own hand-drawn
+    // sprite sheet) — gnash, show teeth, pull a tooth, transform into a
+    // shark, lunge with a giant CHOMP, jaws snap shut (video close frames).
+    // 28f @ 12fps. The old Booger Attack monster is retired for Alan
+    // (Mateo keeps it); no monster runs, no slime — the bite is in the strip.
+    booger: strip("/sprites/alan-shark-v1.png", 12, false, 28),
     block: strip("/sprites/alan-block-v4.png", 20, true, 12),
     // Nov 21 2026 (FlexFox hero-animator prompts): real hit + KO strips.
     // Hit: guard -> recoil (eyes shut, pained grimace, fists up) -> guard.
