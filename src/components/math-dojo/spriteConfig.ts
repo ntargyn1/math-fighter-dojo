@@ -55,9 +55,11 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * shirt, dark blue shorts, light skin. Scaled 0.80 about the feet
    * (Alan's height). No intro strip yet (idle plays at battle start).
    * v10 (Nov 20): idle rebuilt — stable stance like Alan's (only
-   * frames 1-6, no sideways lean; feet and left edge steady). */
+   * frames 1-6, no sideways lean; feet and left edge steady). v11
+   * (Nov 20): idle rebuilt again — only frames 1-4, the single
+   * outlier frame removed; now as steady as Alan (1px spans). */
   mateo: {
-    idle: strip("/sprites/mateo-idle-v10.png", 12, true, 12),
+    idle: strip("/sprites/mateo-idle-v11.png", 12, true, 12),
     jab: strip("/sprites/mateo-jab-v9.png", 28, false, 12),
     kick: strip("/sprites/mateo-kick-v9.png", 12, false, 12),
     booger: strip("/sprites/mateo-booger-v9.png", 12, false, 28),
@@ -72,12 +74,16 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * huge red sledgehammer is added; he slams it down. Scaled 0.80
    * about the feet (Alan's height). No intro strip yet. Idle v2
    * (Nov 20): rebuilt — stable stance like Alan's (only frames 1-6,
-   * no sideways lean; feet and left edge steady). */
+   * no sideways lean; feet and left edge steady). Idle v3 (Nov 20):
+   * rebuilt again — only frames 1-4, the single outlier frame
+   * removed; now as steady as Alan. Heavy v3 (Nov 20): hammer
+   * draw/raise/slam slowed down — 6 frames each (was 4), ending
+   * guard cut to 4; impact ~1.8s. */
   kash: {
-    idle: strip("/sprites/kash-idle-v2.png", 12, true, 12),
+    idle: strip("/sprites/kash-idle-v3.png", 12, true, 12),
     jab: strip("/sprites/kash-jab-v1.png", 28, false, 12),
     kick: strip("/sprites/kash-kick-v1.png", 12, false, 12),
-    booger: strip("/sprites/kash-roblox-v2.png", 12, false, 28),
+    booger: strip("/sprites/kash-roblox-v3.png", 12, false, 28),
     block: strip("/sprites/kash-block-v1.png", 20, true, 12),
   },
 };
