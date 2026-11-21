@@ -20,6 +20,11 @@ export const LUNGE_MS = 120; // time from attack start until impact
 // timing in useFightFx.strike (impact = WALK_IN_MS + LUNGE_MS).
 export const WALK_DIST = 130; // px toward the opponent
 export const WALK_IN_MS = 450; // walk-in duration (also the walk-back)
+// The shark (Alan's jab) is ~256px wide and its bite lunges forward in
+// the strip itself — walking the full 130px puts half the shark BEHIND
+// the opponent. It only needs a short approach.
+const walkDistFor = (character: CharacterId, state: "jab" | "kick") =>
+  character === "alan" && state === "jab" ? 60 : WALK_DIST;
 const BLOCK_HOLD_MS = 600;
 
 // Preloaded strip images are held here for the app's lifetime: without a
@@ -127,9 +132,10 @@ export function Fighter({
           // looping while the container moves), strike, then walk back.
           // The impact lands at WALK_IN_MS + LUNGE_MS — useFightFx times
           // the defender's reaction to that (see strike()).
+          const walkDist = walkDistFor(character, state);
           if (sprites.walk) {
             show(sprites.walk);
-            await controls.start({ x: WALK_DIST * d, transition: { duration: WALK_IN_MS / 1000, ease: "easeInOut" } });
+            await controls.start({ x: walkDist * d, transition: { duration: WALK_IN_MS / 1000, ease: "easeInOut" } });
             if (!alive) return;
           }
           const finished = new Promise<void>((r) => (stripDone.current = r));
@@ -139,7 +145,7 @@ export function Fighter({
           // reads as walking, not sliding.
           const dist = state === "kick" ? (character === "bayan" ? 40 : 32) : 52;
           const lungeMs = state === "kick" && character === "bayan" ? 450 : LUNGE_MS;
-          await controls.start({ x: (WALK_DIST + dist) * d, y: [0, -5, 0], transition: { duration: lungeMs / 1000, ease: "easeIn" } });
+          await controls.start({ x: (walkDist + dist) * d, y: [0, -5, 0], transition: { duration: lungeMs / 1000, ease: "easeIn" } });
           if (!alive) return;
           await freeze();
           if (!alive) return;
