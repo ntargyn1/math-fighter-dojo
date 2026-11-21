@@ -139,8 +139,28 @@ export function Fighter({
           show(sprites.idle);
           return done();
         }
-        case "hit":
-          if (sprites.hit) show(sprites.hit);
+        case "hit": {
+          if (sprites.hit) {
+            // Real hit strip (Nov 21 2026): the drawing carries the recoil
+            // (guard -> flinch -> recoil -> guard). Keep the impact flash
+            // + hitstop, but do NOT move the container — the knockback and
+            // lean-back would double the motion already drawn in the strip.
+            // The strip is mirrored by `facing`, so the baked-in recoil
+            // reads correctly on both sides of the arena.
+            const finished = new Promise<void>((r) => (stripDone.current = r));
+            show(sprites.hit);
+            setFlash("white");
+            await freeze(); // hitstop: strip pauses 100ms on the impact
+            if (!alive) return;
+            setFlash("red");
+            await finished; // strip plays once
+            if (!alive) return;
+            setFlash("none");
+            show(sprites.idle);
+            return done();
+          }
+          // No real strip: procedural hit (flash + squash + knockback +
+          // lean-back) on top of the current strip.
           setFlash("white");
           controls.set({ scaleY: 0.9, y: 0 });
           await freeze();
@@ -155,14 +175,32 @@ export function Fighter({
           if (!alive) return;
           show(sprites.idle);
           return done();
+        }
         case "block":
           show(sprites.block);
           await controls.start({ x: [0, -8 * d, -8 * d, 0], scaleY: [1, 0.95, 0.95, 1], y: 0, transition: { duration: BLOCK_HOLD_MS / 1000, times: [0, 0.15, 0.85, 1] } });
           if (!alive) return;
           show(sprites.idle);
           return done();
-        case "ko":
-          if (sprites.ko) show(sprites.ko);
+        case "ko": {
+          if (sprites.ko) {
+            // Real KO strip (Nov 21 2026): the drawing carries the fall
+            // (stagger -> fall -> lie still). Play it once and hold the
+            // last frame; do NOT rotate the container — that would double
+            // the fall. The strip is mirrored by `facing`, so the fall
+            // reads correctly on both sides.
+            const finished = new Promise<void>((r) => (stripDone.current = r));
+            show(sprites.ko);
+            setFrozen(false); // let the strip play (not frozen)
+            setFlash("red");
+            await wait(150);
+            if (!alive) return;
+            setFlash("none");
+            await finished; // strip plays once, holds last frame
+            return done(); // stays down until state returns to idle
+          }
+          // No real strip: procedural fall (freeze on current frame,
+          // rotate -90 so the fighter lies flat).
           setFrozen(true); // interrupt current strip on its current frame
           setFlash("red");
           await controls.start({ x: -18 * d, rotate: -8 * d, transition: { duration: 0.1, ease: "easeOut" } });
@@ -172,6 +210,7 @@ export function Fighter({
           if (!alive) return;
           await controls.start({ y: [6, -8, 6, 2, 6], transition: { duration: 0.35, ease: "easeOut" } });
           return done(); // stays lying down until state returns to idle
+        }
       }
     })();
     return () => {

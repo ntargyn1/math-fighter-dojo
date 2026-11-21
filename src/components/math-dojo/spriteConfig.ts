@@ -39,6 +39,11 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     kick: strip("/sprites/alan-kick-v2.png", 12, false, 12),
     booger: strip("/sprites/alan-booger-v5.png", 12, false, 28),
     block: strip("/sprites/alan-block-v4.png", 20, true, 12),
+    // Nov 21 2026 (FlexFox hero-animator prompts): real hit + KO strips.
+    // Hit: guard -> recoil (eyes shut, pained grimace, fists up) -> guard.
+    // KO: stagger, knees buckle, falls to a sitting position, holds.
+    hit: strip("/sprites/alan-hit-v1.png", 28, false, 12),
+    ko: strip("/sprites/alan-ko-v1.png", 12, false, 28),
   },
   bayan: {
     idle: strip("/sprites/bayan-idle-v7.png", 12, true, 12),
@@ -47,6 +52,11 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     kick: strip("/sprites/bayan-jumpkick-v1.png", 12, false, 12),
     booger: strip("/sprites/bayan-cat-v2.png", 12, false, 28),
     block: strip("/sprites/bayan-block-v2.png", 20, true, 12),
+    // Nov 21 2026 (FlexFox prompts): real hit + KO strips.
+    // Hit: guard -> flinch -> recoil (eyes shut, pained) -> guard.
+    // KO: stagger, lean back, falls FLAT on her back, lies still.
+    hit: strip("/sprites/bayan-hit-v1.png", 28, false, 12),
+    ko: strip("/sprites/bayan-ko-v1.png", 12, false, 28),
   },
   /** Mateo (Alan's friend, Nov 20 2026): same strikes as Alan for now —
    * jab / kick / booger (monster) / block. v8: v7 body + v5 face +
@@ -64,6 +74,11 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     kick: strip("/sprites/mateo-kick-v9.png", 12, false, 12),
     booger: strip("/sprites/mateo-booger-v9.png", 12, false, 28),
     block: strip("/sprites/mateo-block-v9.png", 20, true, 12),
+    // Nov 21 2026 (FlexFox prompts): real hit strip. Guard -> impact
+    // (white star at the cheek) -> recoil (eyes shut, pained) -> guard.
+    // No real KO strip: his KO video never fell (only leaned back), so
+    // he keeps the procedural fall until a new KO video is generated.
+    hit: strip("/sprites/mateo-hit-v1.png", 28, false, 12),
   },
   /** Kash (Alan's friend, Nov 20 2026): same scheme as Mateo — Alan's
    * body with Kash's face and clothes. Short light-brown hair, dark
