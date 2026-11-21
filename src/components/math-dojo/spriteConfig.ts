@@ -91,17 +91,19 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
   },
   /** Luca (Kash's brother, Nov 20 2026): Bayan's body/height/limbs —
    * built on Bayan's idle strip, NOT scaled 0.80 (stays ~320px tall
-   * like Bayan). Black cap, glasses, grey t-shirt, black shorts with
-   * red trim, black sneakers. Heavy is NOT a booger: the "booger" slot
-   * holds the Grim Reaper scythe strip (28f) — Luca glows purple,
+   * like Bayan — measured 320 vs her 319). BLOND hair (light yellow
+   * under the cap). Black cap, glasses, grey t-shirt, black shorts
+   * with red trim, black sneakers. Heavy is NOT a booger: the "booger"
+   * slot holds the Grim Reaper scythe strip (28f) — Luca glows purple,
    * transforms into the Grim Reaper (black hooded robe, scythe),
-   * swings the scythe down. No intro strip yet. */
+   * swings the scythe down. v2 (Nov 20): blond hair — all strips
+   * rebuilt from the blond guard. No intro strip yet. */
   luca: {
-    idle: strip("/sprites/luca-idle-v1.png", 12, true, 12),
-    jab: strip("/sprites/luca-jab-v1.png", 28, false, 12),
-    kick: strip("/sprites/luca-kick-v1.png", 12, false, 12),
-    booger: strip("/sprites/luca-reaper-v1.png", 12, false, 28),
-    block: strip("/sprites/luca-block-v1.png", 20, true, 12),
+    idle: strip("/sprites/luca-idle-v2.png", 12, true, 12),
+    jab: strip("/sprites/luca-jab-v2.png", 28, false, 12),
+    kick: strip("/sprites/luca-kick-v2.png", 12, false, 12),
+    booger: strip("/sprites/luca-reaper-v2.png", 12, false, 28),
+    block: strip("/sprites/luca-block-v2.png", 20, true, 12),
   },
 };
 
