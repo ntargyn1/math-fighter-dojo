@@ -61,6 +61,8 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     // KO: stagger, lean back, falls FLAT on her back, lies still.
     hit: strip("/sprites/bayan-hit-v1.png", 28, false, 12),
     ko: strip("/sprites/bayan-ko-v1.png", 12, false, 28),
+    // Nov 21 2026: victory — crouch, jump with arms raised, big smile, land.
+    victory: strip("/sprites/bayan-victory-v1.png", 12, false, 12),
   },
   /** Mateo (Alan's friend, Nov 20 2026): same strikes as Alan for now —
    * jab / kick / booger (monster) / block. v8: v7 body + v5 face +
@@ -86,6 +88,8 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     // video drew him small and the lying body is wide), vs 255px idle.
     hit: strip("/sprites/mateo-hit-v1.png", 28, false, 12),
     ko: strip("/sprites/mateo-ko-v2.png", 12, false, 28),
+    // Nov 21 2026: victory — jump with arms raised, big smile, land.
+    victory: strip("/sprites/mateo-victory-v1.png", 12, false, 12),
   },
   /** Kash (Alan's friend, Nov 20 2026): same scheme as Mateo — Alan's
    * body with Kash's face and clothes. Short light-brown hair, dark
@@ -115,6 +119,9 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     // KO: stagger, lean back, falls FLAT on his back, lies still.
     hit: strip("/sprites/kash-hit-v1.png", 28, false, 12),
     ko: strip("/sprites/kash-ko-v1.png", 12, false, 28),
+    // Nov 21 2026: victory — arms raised, big smile. (The video opens
+    // with a punch — frames f5/f8 are NOT in the strip.)
+    victory: strip("/sprites/kash-victory-v1.png", 12, false, 12),
   },
   /** Luca (Kash's brother, Nov 20 2026): Bayan's body/height/limbs —
    * built on Bayan's idle strip, NOT scaled 0.80 (stays ~320px tall
@@ -136,10 +143,15 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     booger: strip("/sprites/luca-reaper-v3.png", 12, false, 28),
     block: strip("/sprites/luca-block-v3.png", 20, true, 12),
     // Nov 21 2026 (FlexFox prompts): real hit strip. Guard -> recoil
-    // (eyes shut, pained grimace, fists up) -> guard. No real KO strip:
-    // his KO video never fell (only leans back further and further, still
-    // standing at f48), so he keeps the procedural fall.
+    // (eyes shut, pained grimace, fists up) -> guard. KO v2 (Nov 21):
+    // the v1 video never fell; v2 with the faster "suddenly stumbles,
+    // loses his balance at once" wording falls flat with X-shaped eyes
+    // and lies still. Note: his KO guard is ~261px vs 320 idle (the
+    // lying body is wide, forcing a small scale).
     hit: strip("/sprites/luca-hit-v1.png", 28, false, 12),
+    ko: strip("/sprites/luca-ko-v2.png", 12, false, 28),
+    // Nov 21 2026: victory — jump with arms raised, big smile, cap stays on.
+    victory: strip("/sprites/luca-victory-v1.png", 12, false, 12),
   },
 };
 
