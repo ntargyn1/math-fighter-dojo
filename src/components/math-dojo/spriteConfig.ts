@@ -109,7 +109,7 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * video generated of the hammer actually slamming down with a
    * dust impact; impact ~1.9s. */
   kash: {
-    idle: strip("/sprites/kash-idle-v3.png", 12, true, 12),
+    idle: strip("/sprites/kash-idle-v4.png", 12, true, 12),
     jab: strip("/sprites/kash-jab-v1.png", 28, false, 12),
     kick: strip("/sprites/kash-kick-v1.png", 12, false, 12),
     booger: strip("/sprites/kash-roblox-v4.png", 12, false, 28),
@@ -137,7 +137,7 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * stable frames 8-10 only (frame 7 had closed eyes). No intro
    * strip yet. */
   luca: {
-    idle: strip("/sprites/luca-idle-v3.png", 12, true, 12),
+    idle: strip("/sprites/luca-idle-v4.png", 12, true, 12),
     jab: strip("/sprites/luca-jab-v3.png", 28, false, 12),
     kick: strip("/sprites/luca-kick-v3.png", 12, false, 12),
     booger: strip("/sprites/luca-reaper-v3.png", 12, false, 28),
