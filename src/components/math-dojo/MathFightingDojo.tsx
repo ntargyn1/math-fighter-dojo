@@ -54,19 +54,27 @@ const PUNCHES: Record<
   heavy: { label: "Booger Attack", emoji: "🤢", levelShift: 2, damage: 35, counter: 20, risk: "Hard • Miss = -20 you" },
 };
 
-/** Heavy is per-fighter: Alan's Shark Bite (his own hand-drawn sheet),
- * Mateo's monster booger, Bayan's cat scratch, Kash's Roblox sledgehammer,
- * Luca's Grim Reaper scythe. */
+/** Heavy is per-fighter: Alan's and Mateo's monster booger, Bayan's cat
+ * scratch, Kash's Roblox sledgehammer, Luca's Grim Reaper scythe. */
 const heavyFor = (c: CharacterId) =>
-  c === "alan"
-    ? { label: "Shark Bite", emoji: "🦈" }
-    : c === "bayan"
-      ? { label: "Cat Scratch", emoji: "🐱" }
-      : c === "kash"
-        ? { label: "Roblox Hammer", emoji: "🔨" }
-        : c === "luca"
-          ? { label: "Grim Reaper", emoji: "💀" }
-          : { label: "Booger Attack", emoji: "🤢" };
+  c === "bayan"
+    ? { label: "Cat Scratch", emoji: "🐱" }
+    : c === "kash"
+      ? { label: "Roblox Hammer", emoji: "🔨" }
+      : c === "luca"
+        ? { label: "Grim Reaper", emoji: "💀" }
+        : { label: "Booger Attack", emoji: "🤢" };
+
+/** Light jab is per-fighter too: Alan's jab is the Shark Bite (his own
+ * hand-drawn sheet); everyone else keeps the plain Light Jab. */
+const lightFor = (c: CharacterId) =>
+  c === "alan" ? { label: "Shark Bite", emoji: "🦈" } : { label: "Light Jab", emoji: "👊" };
+
+/** The label + emoji shown for a punch kind, per character (Alan's light
+ * is the Shark Bite, his heavy the Booger Attack; medium is the same for
+ * everyone). Used for the question header. */
+const punchDisplay = (punch: PunchKind, c: CharacterId) =>
+  punch === "heavy" ? heavyFor(c) : punch === "light" ? lightFor(c) : { label: PUNCHES[punch].label, emoji: PUNCHES[punch].emoji };
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -159,7 +167,8 @@ interface RoundResult {
 function resolveRound(punch: PunchKind, correct: boolean, elapsed: number, streak: number, attacker: PlayerId = "player1", attackerChar: CharacterId = "alan"): RoundResult {
   const p = PUNCHES[punch];
   const heavy = heavyFor(attackerChar);
-  const label = punch === "heavy" ? heavy.label : p.label;
+  const light = lightFor(attackerChar);
+  const label = punch === "heavy" ? heavy.label : punch === "light" ? light.label : p.label;
   if (!correct) {
     return {
       hit: false,
@@ -188,17 +197,16 @@ function playUltimateAnimation() {
   console.debug("ULTIMATE!");
 }
 
-// Heavy impact: the hit feedback must wait for the contact frame. At
-// LUNGE_MS (120ms) the attacker is still winding up and the monster/cat/
-// hammer/scythe/shark isn't there yet, so the defender would flinch at
-// nothing. The contact frame differs per fighter (the heavy strips are
-// 28 frames / ~2.33s now): Alan's shark jaws snap shut on strip frame 26
-// (~2.1s), Mateo's monster slaps on strip frames 25-26 (~2.0s), Bayan's
-// cat starts scratching on strip frame 17 (~1.33s). Each fighter gets its
-// own delay, so the popup, burst, flinch and the slime/scratch mark land
-// on the actual contact frame.
-const ALAN_BOOGER_IMPACT_MS = 2000; // Mateo's monster slaps (~2.0s).
-const ALAN_SHARK_IMPACT_MS = 2100; // Alan's shark jaws snap shut on strip frame 26 (~2.08s).
+// Booger Attack: the monster's slap lands late in the 1.33s strip (its fist
+// is out at ~0.9s, confirmed live) — the hit feedback must wait for it. At
+// LUNGE_MS (120ms) Alan is still picking his nose and the monster hasn't
+// appeared, so the defender would flinch at nothing and the slap would land
+// on an idle fighter. The contact frame differs per fighter (the heavy
+// strips are 28 frames / ~2.33s now): Alan's and Mateo's monster slaps on
+// strip frames 25-26 (~2.0s), Bayan's cat starts scratching on strip frame
+// 17 (~1.33s). Each fighter gets its own delay, so the popup, burst, flinch
+// and the slime/scratch mark land on the actual contact frame.
+const ALAN_BOOGER_IMPACT_MS = 2000;
 const BAYAN_CAT_IMPACT_MS = 1400;
 const KASH_ROBLOX_IMPACT_MS = 1900; // Kash's hammer hits the ground on strip frame ~23 (28f @ 12fps, v4).
 const LUCA_REAPER_IMPACT_MS = 1450; // Luca's scythe reaches its lowest sweep on strip frame ~17 (28f @ 12fps, v1).
@@ -324,34 +332,30 @@ function useFightFx() {
 
   // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
   // effect: which visible hit mark the heavy leaves on the defender —
-  // "bite" for Alan's Shark Bite (jaws snap shut, no monster, no mark —
-  // the CHOMP is in the strip), "slime" for Mateo's monster booger,
-  // "scratch" for Bayan's cat, "hammer" for Kash's Roblox sledgehammer,
-  // "scythe" for Luca's Grim Reaper, "none" for the boss (an emoji, it
-  // has no monster or cat).
-  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit", effect: "slime" | "scratch" | "hammer" | "scythe" | "bite" | "none" = "none") => {
+  // "slime" for Alan's and Mateo's monster booger, "scratch" for Bayan's
+  // cat, "hammer" for Kash's Roblox sledgehammer, "scythe" for Luca's Grim
+  // Reaper, "none" for the boss (an emoji, it has no monster or cat).
+  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit", effect: "slime" | "scratch" | "hammer" | "scythe" | "none" = "none") => {
     const defender: Side = attacker === "top" ? "bottom" : "top";
-    // The heavy's contact frame differs per fighter (Alan's shark jaws
-    // snap shut at ~2.1s, Mateo's monster slaps at ~2.0s, Bayan's cat
-    // starts scratching at ~1.33s, Kash's hammer slams at ~1.9s, Luca's
-    // scythe sweeps lowest at ~1.45s), so the hit feedback waits for the
-    // attacker's contact — not for LUNGE_MS (when the monster/cat/
-    // hammer/scythe/shark isn't there yet) and not for a shared guess.
-    // The boss has no monster or cat (effect "none"), so its counter is
-    // a plain lunge and the feedback fires at LUNGE_MS.
+    // The heavy's contact frame differs per fighter (Alan's and Mateo's
+    // monster slaps at ~2.0s, Bayan's cat starts scratching at ~1.33s,
+    // Kash's hammer slams at ~1.9s, Luca's scythe sweeps lowest at
+    // ~1.45s), so the hit feedback waits for the attacker's contact —
+    // not for LUNGE_MS (when the monster/cat/hammer/scythe isn't there
+    // yet) and not for a shared guess. The boss has no monster or cat
+    // (effect "none"), so its counter is a plain lunge and the feedback
+    // fires at LUNGE_MS.
     const impactMs =
       move === "booger"
-        ? effect === "bite"
-          ? ALAN_SHARK_IMPACT_MS
-          : effect === "slime"
-            ? ALAN_BOOGER_IMPACT_MS
-            : effect === "scratch"
-              ? BAYAN_CAT_IMPACT_MS
-              : effect === "hammer"
-                ? KASH_ROBLOX_IMPACT_MS
-                : effect === "scythe"
-                  ? LUCA_REAPER_IMPACT_MS
-                  : LUNGE_MS
+        ? effect === "slime"
+          ? ALAN_BOOGER_IMPACT_MS
+          : effect === "scratch"
+            ? BAYAN_CAT_IMPACT_MS
+            : effect === "hammer"
+              ? KASH_ROBLOX_IMPACT_MS
+              : effect === "scythe"
+                ? LUCA_REAPER_IMPACT_MS
+                : LUNGE_MS
         : LUNGE_MS;
     const atk = play(attacker, move);
     // Alan's Booger Attack: the monster runs on its own now (it is no
@@ -783,13 +787,13 @@ export function BigButton({
   );
 }
 
-function PunchPicker({ onPick, title, heavy }: { onPick: (p: PunchKind) => void; title: string; heavy?: { label: string; emoji: string } }) {
+function PunchPicker({ onPick, title, heavy, light }: { onPick: (p: PunchKind) => void; title: string; heavy?: { label: string; emoji: string }; light?: { label: string; emoji: string } }) {
   return (
     <div className="flex w-full flex-col gap-2 rounded-3xl bg-white/70 p-3 shadow-inner">
       <div className="text-center text-base font-black text-[var(--dojo-primary)]">{title}</div>
       <div className="grid grid-cols-3 gap-2">
       {(Object.keys(PUNCHES) as PunchKind[]).map((k) => {
-        const p = k === "heavy" && heavy ? { ...PUNCHES[k], ...heavy } : PUNCHES[k];
+        const p = k === "heavy" && heavy ? { ...PUNCHES[k], ...heavy } : k === "light" && light ? { ...PUNCHES[k], ...light } : PUNCHES[k];
         return (
           <button
             key={k}
@@ -1091,7 +1095,7 @@ function BattleScreen({
       sfx.punch(r.ultimate || round.punch === "heavy");
       npc -= r.damage;
       setNpcHealth(npc);
-      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab", "hit", r.ultimate || round.punch === "heavy" ? "bite" : "none");
+      await fx.strike("bottom", `-${r.damage}`, r.ultimate || round.punch !== "light", r.ultimate || round.punch === "heavy" ? "booger" : round.punch === "medium" ? "kick" : "jab", "hit", r.ultimate || round.punch === "heavy" ? "slime" : "none");
     } else if (r.counter > 0) {
       sfx.whoosh();
       await wait(120);
@@ -1144,6 +1148,7 @@ function BattleScreen({
         {round.phase === "choose" ? (
           <PunchPicker
             title={boss ? `Choose your punch!` : `Choose your punch! (Level ${level})`}
+            light={lightFor("alan")}
             onPick={(p) => (boss ? round.begin(p, 0, { q: boss.gen(), timerSec: boss.timerSec }) : round.begin(p, level))}
           />
         ) : (
@@ -1155,7 +1160,7 @@ function BattleScreen({
             timerColor="var(--dojo-primary)"
             onAnswer={(v) => void finish(v === round.question.correctAnswer)}
             disabled={round.phase !== "question"}
-            headerText={`${PUNCHES[round.punch].emoji} ${PUNCHES[round.punch].label}`}
+            headerText={`${punchDisplay(round.punch, "alan").emoji} ${punchDisplay(round.punch, "alan").label}`}
             flash={flash}
           />
         )}
@@ -1333,7 +1338,7 @@ function TwoPlayerBattleScreen({
     const next = { ...health };
     // Heavy effect is per-fighter: Bayan's cat scratch, Kash's Roblox
     // hammer, everyone else's booger monster.
-    const effectFor = (c: CharacterId) => (c === "alan" ? "bite" : c === "bayan" ? "scratch" : c === "kash" ? "hammer" : c === "luca" ? "scythe" : "slime");
+    const effectFor = (c: CharacterId) => (c === "bayan" ? "scratch" : c === "kash" ? "hammer" : c === "luca" ? "scythe" : "slime");
     const atkEffect = effectFor(chars[attacker]);
     const defEffect = effectFor(chars[defender]);
     if (r.hit) {
@@ -1422,7 +1427,7 @@ function TwoPlayerBattleScreen({
       >
         <FastMeter streak={streaks[p]} />
         {round.phase === "choose" ? (
-          <PunchPicker title={`${label}: choose your punch!`} heavy={heavyFor(chars[p])} onPick={(k) => round.begin(k, levels[p])} />
+          <PunchPicker title={`${label}: choose your punch!`} heavy={heavyFor(chars[p])} light={lightFor(chars[p])} onPick={(k) => round.begin(k, levels[p])} />
         ) : (
           <QuestionCard
             question={round.question}
@@ -1433,7 +1438,7 @@ function TwoPlayerBattleScreen({
             onAnswer={(v) => void finish(v === round.question.correctAnswer)}
             disabled={round.phase !== "question"}
             answerVariant={p === "player1" ? "p1" : "p2"}
-            headerText={`${PUNCHES[round.punch].emoji} ${PUNCHES[round.punch].label}`}
+            headerText={`${punchDisplay(round.punch, chars[p]).emoji} ${punchDisplay(round.punch, chars[p]).label}`}
             flash={flash}
           />
         )}
