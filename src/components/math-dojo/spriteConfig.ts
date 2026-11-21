@@ -97,13 +97,17 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * slot holds the Grim Reaper scythe strip (28f) — Luca glows purple,
    * transforms into the Grim Reaper (black hooded robe, scythe),
    * swings the scythe down. v2 (Nov 20): blond hair — all strips
-   * rebuilt from the blond guard. No intro strip yet. */
+   * rebuilt from the blond guard. v3 (Nov 20): boyish face — the v2
+   * face looked like Bayan's; new face with strong straight eyebrows,
+   * narrower eyes, more angular jaw. Idle rebuilt from eyes-open
+   * stable frames 8-10 only (frame 7 had closed eyes). No intro
+   * strip yet. */
   luca: {
-    idle: strip("/sprites/luca-idle-v2.png", 12, true, 12),
-    jab: strip("/sprites/luca-jab-v2.png", 28, false, 12),
-    kick: strip("/sprites/luca-kick-v2.png", 12, false, 12),
-    booger: strip("/sprites/luca-reaper-v2.png", 12, false, 28),
-    block: strip("/sprites/luca-block-v2.png", 20, true, 12),
+    idle: strip("/sprites/luca-idle-v3.png", 12, true, 12),
+    jab: strip("/sprites/luca-jab-v3.png", 28, false, 12),
+    kick: strip("/sprites/luca-kick-v3.png", 12, false, 12),
+    booger: strip("/sprites/luca-reaper-v3.png", 12, false, 28),
+    block: strip("/sprites/luca-block-v3.png", 20, true, 12),
   },
 };
 
