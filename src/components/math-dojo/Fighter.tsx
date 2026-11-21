@@ -7,12 +7,19 @@ import { CHARACTERS, type CharacterId, type StripConfig } from "./spriteConfig";
  * Procedural motion (lunge, hitstop, knockback, KO fall) runs on the container;
  * the sprite strip inside plays frames with CSS steps(). Only the sprite element is mirrored.
  */
-export type FighterState = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko" | "victory";
+export type FighterState = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko" | "victory" | "walk";
 export type AttackMove = "jab" | "kick" | "booger";
 export type Facing = "left" | "right";
 
 export const HITSTOP_MS = 100;
 export const LUNGE_MS = 120; // time from attack start until impact
+// Melee walk-up (Nov 21 2026): for jab/kick the fighter walks to the
+// opponent first (walk strip looping, container moves), strikes, then
+// walks back. Ranged heavies (booger/cat/hammer/reaper) don't walk —
+// their effect travels on its own. WALK_IN_MS must match the impact
+// timing in useFightFx.strike (impact = WALK_IN_MS + LUNGE_MS).
+export const WALK_DIST = 130; // px toward the opponent
+export const WALK_IN_MS = 450; // walk-in duration (also the walk-back)
 const BLOCK_HOLD_MS = 600;
 
 // Preloaded strip images are held here for the app's lifetime: without a
@@ -115,21 +122,49 @@ export function Fighter({
           return done();
         }
         case "jab":
-        case "kick":
+        case "kick": {
+          // Melee (Nov 21 2026): walk up to the opponent first (walk strip
+          // looping while the container moves), strike, then walk back.
+          // The impact lands at WALK_IN_MS + LUNGE_MS — useFightFx times
+          // the defender's reaction to that (see strike()).
+          if (sprites.walk) {
+            show(sprites.walk);
+            await controls.start({ x: WALK_DIST * d, transition: { duration: WALK_IN_MS / 1000, ease: "easeInOut" } });
+            if (!alive) return;
+          }
+          const finished = new Promise<void>((r) => (stripDone.current = r));
+          show(sprites[state]);
+          // Small lunge from the walked-up position (jab 52px, Alan kick
+          // 32px, Bayan jump kick 40px), with a small y-bob so the step
+          // reads as walking, not sliding.
+          const dist = state === "kick" ? (character === "bayan" ? 40 : 32) : 52;
+          const lungeMs = state === "kick" && character === "bayan" ? 450 : LUNGE_MS;
+          await controls.start({ x: (WALK_DIST + dist) * d, y: [0, -5, 0], transition: { duration: lungeMs / 1000, ease: "easeIn" } });
+          if (!alive) return;
+          await freeze();
+          if (!alive) return;
+          // Wait for the strike strip to finish before walking back — the
+          // `finished` promise belongs to the strike strip, and swapping
+          // to the looping walk strip first would leave it hanging.
+          await finished;
+          if (!alive) return;
+          if (sprites.walk) {
+            show(sprites.walk);
+            await controls.start({ x: 0, y: 0, transition: { duration: WALK_IN_MS / 1000, ease: "easeInOut" } });
+            if (!alive) return;
+          } else {
+            await controls.start({ x: 0, y: 0, transition: { duration: 0.15, ease: "easeOut" } });
+          }
+          show(sprites.idle);
+          return done();
+        }
         case "booger": {
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
-          // Wider arena (Nov 10): the fighters stand further apart, so the
-          // attacker steps in further — a visible walk-up, not a twitch.
-          // The lunge still stops before the arena centre, where the
-          // opponent's slot would cover the attacker's foot.
-          // Jab 52px, Alan kick 32px, Bayan jump kick 40px, booger 32px
-          // (Alan only throws now — the monster runs on its own).
-          // A small y-bob makes the step read as walking, not sliding.
-          const dist =
-            state === "booger" ? 32 : state === "kick" ? (character === "bayan" ? 40 : 32) : 52;
-          const lungeMs = state === "kick" && character === "bayan" ? 450 : LUNGE_MS;
-          await controls.start({ x: dist * d, y: [0, -5, 0], transition: { duration: lungeMs / 1000, ease: "easeIn" } });
+          // Ranged heavy: no walk-up — the effect (monster / cat /
+          // hammer / scythe) travels to the opponent on its own.
+          // Small lunge (32px) with a y-bob, as before.
+          await controls.start({ x: 32 * d, y: [0, -5, 0], transition: { duration: LUNGE_MS / 1000, ease: "easeIn" } });
           if (!alive) return;
           await freeze();
           if (!alive) return;

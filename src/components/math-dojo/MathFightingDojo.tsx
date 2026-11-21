@@ -4,7 +4,7 @@ import { sfx, isMuted, setMuted } from "./sound";
 import { getBelt, loadWins, saveWins, BELTS } from "./belts";
 import { TrainingScreen } from "./Training";
 import { SchoolTestScreen } from "./SchoolTest";
-import { Fighter, LUNGE_MS, preloadAllStrips, type FighterState, type AttackMove } from "./Fighter";
+import { Fighter, LUNGE_MS, WALK_IN_MS, preloadAllStrips, type FighterState, type AttackMove } from "./Fighter";
 import { CHARACTERS, MONSTER_BOOGER, type CharacterId } from "./spriteConfig";
 import { BOSSES, defeatBoss, loadUnlocked, type BossDef } from "./campaign";
 
@@ -345,6 +345,10 @@ function useFightFx() {
     // yet) and not for a shared guess. The boss has no monster or cat
     // (effect "none"), so its counter is a plain lunge and the feedback
     // fires at LUNGE_MS.
+    // Melee (jab/kick) now walks up first (Nov 21 2026): the strike
+    // lands at WALK_IN_MS + LUNGE_MS, so the defender's reaction waits
+    // for the walk-in, not just the lunge. Boogers are unchanged — the
+    // effect travels on its own.
     const impactMs =
       move === "booger"
         ? effect === "slime"
@@ -356,7 +360,7 @@ function useFightFx() {
               : effect === "scythe"
                 ? LUCA_REAPER_IMPACT_MS
                 : LUNGE_MS
-        : LUNGE_MS;
+        : WALK_IN_MS + LUNGE_MS;
     const atk = play(attacker, move);
     // Alan's Booger Attack: the monster runs on its own now (it is no
     // longer baked into Alan's strip). It spawns as the booger leaves his
