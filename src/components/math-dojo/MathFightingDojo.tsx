@@ -1106,6 +1106,10 @@ function BattleScreen({
       await fx.knockOut(won ? "top" : "bottom");
       if (won) sfx.victory();
       else sfx.defeat();
+      // Winner celebrates: Alan (bottom) plays his victory strip while
+      // the result screen is about to appear. Fire and forget — the
+      // strip (1s) plays during the 1300ms wait below.
+      if (won) void fx.play("bottom", "victory");
       await wait(1300);
       if (!mounted.current) return;
       if (won) onVictory();
@@ -1350,8 +1354,13 @@ function TwoPlayerBattleScreen({
       round.setPhase("ko");
       await fx.knockOut(sideOf(loser));
       sfx.victory();
+      // Winner celebrates (if they have a victory strip — only Alan does
+      // so far; others just stay in idle). Fire and forget — the strip
+      // (1s) plays during the 1300ms wait below.
+      const winner = loser === "player1" ? "player2" : "player1";
+      void fx.play(sideOf(winner), "victory");
       await wait(1300);
-      if (mounted.current) onFinish(loser === "player1" ? "player2" : "player1");
+      if (mounted.current) onFinish(winner);
     } else {
       setTurn(defender);
       round.setPhase("choose");

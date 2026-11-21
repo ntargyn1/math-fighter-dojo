@@ -13,7 +13,7 @@ export interface StripConfig {
 }
 
 export type CharacterId = "alan" | "bayan" | "mateo" | "kash" | "luca";
-export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko";
+export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko" | "victory";
 
 const FRAME = { frames: 6, frameWidth: 326, frameHeight: 348 } as const;
 const strip = (src: string, fps: number, loop: boolean, frames: number = FRAME.frames): StripConfig => ({ src, fps, loop, frames, frameWidth: FRAME.frameWidth, frameHeight: FRAME.frameHeight });
@@ -29,6 +29,8 @@ export interface CharacterSprites {
   /** Optional real strips. When missing, hit/ko are procedural on top of the current strip. */
   hit?: StripConfig;
   ko?: StripConfig; // drop-in slot: alan-ko.png / bayan-ko.png
+  /** Optional victory celebration: plays once for the battle winner. */
+  victory?: StripConfig;
 }
 
 export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
@@ -44,6 +46,8 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     // KO: stagger, knees buckle, falls to a sitting position, holds.
     hit: strip("/sprites/alan-hit-v1.png", 28, false, 12),
     ko: strip("/sprites/alan-ko-v1.png", 12, false, 28),
+    // Nov 21 2026: victory celebration — big smile, arms raised, small hop.
+    victory: strip("/sprites/alan-victory-v1.png", 12, false, 12),
   },
   bayan: {
     idle: strip("/sprites/bayan-idle-v7.png", 12, true, 12),
@@ -76,9 +80,12 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     block: strip("/sprites/mateo-block-v9.png", 20, true, 12),
     // Nov 21 2026 (FlexFox prompts): real hit strip. Guard -> impact
     // (white star at the cheek) -> recoil (eyes shut, pained) -> guard.
-    // No real KO strip: his KO video never fell (only leaned back), so
-    // he keeps the procedural fall until a new KO video is generated.
+    // KO v2 (Nov 21): the v1 video never fell (only leaned back); v2 with
+    // the stronger "topples over backwards and lands flat" wording falls
+    // flat on his back and lies still. Note: his KO guard is ~195px (the
+    // video drew him small and the lying body is wide), vs 255px idle.
     hit: strip("/sprites/mateo-hit-v1.png", 28, false, 12),
+    ko: strip("/sprites/mateo-ko-v2.png", 12, false, 28),
   },
   /** Kash (Alan's friend, Nov 20 2026): same scheme as Mateo — Alan's
    * body with Kash's face and clothes. Short light-brown hair, dark
@@ -103,6 +110,11 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     kick: strip("/sprites/kash-kick-v1.png", 12, false, 12),
     booger: strip("/sprites/kash-roblox-v4.png", 12, false, 28),
     block: strip("/sprites/kash-block-v1.png", 20, true, 12),
+    // Nov 21 2026 (FlexFox prompts): real hit + KO strips.
+    // Hit: guard -> flinch -> recoil (eyes shut, pained) -> guard.
+    // KO: stagger, lean back, falls FLAT on his back, lies still.
+    hit: strip("/sprites/kash-hit-v1.png", 28, false, 12),
+    ko: strip("/sprites/kash-ko-v1.png", 12, false, 28),
   },
   /** Luca (Kash's brother, Nov 20 2026): Bayan's body/height/limbs —
    * built on Bayan's idle strip, NOT scaled 0.80 (stays ~320px tall
@@ -123,6 +135,11 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     kick: strip("/sprites/luca-kick-v3.png", 12, false, 12),
     booger: strip("/sprites/luca-reaper-v3.png", 12, false, 28),
     block: strip("/sprites/luca-block-v3.png", 20, true, 12),
+    // Nov 21 2026 (FlexFox prompts): real hit strip. Guard -> recoil
+    // (eyes shut, pained grimace, fists up) -> guard. No real KO strip:
+    // his KO video never fell (only leans back further and further, still
+    // standing at f48), so he keeps the procedural fall.
+    hit: strip("/sprites/luca-hit-v1.png", 28, false, 12),
   },
 };
 

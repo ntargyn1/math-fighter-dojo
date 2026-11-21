@@ -7,7 +7,7 @@ import { CHARACTERS, type CharacterId, type StripConfig } from "./spriteConfig";
  * Procedural motion (lunge, hitstop, knockback, KO fall) runs on the container;
  * the sprite strip inside plays frames with CSS steps(). Only the sprite element is mirrored.
  */
-export type FighterState = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko";
+export type FighterState = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko" | "victory";
 export type AttackMove = "jab" | "kick" | "booger";
 export type Facing = "left" | "right";
 
@@ -210,6 +210,19 @@ export function Fighter({
           if (!alive) return;
           await controls.start({ y: [6, -8, 6, 2, 6], transition: { duration: 0.35, ease: "easeOut" } });
           return done(); // stays lying down until state returns to idle
+        }
+        case "victory": {
+          // Victory celebration (Nov 21 2026): play the strip once, then
+          // back to idle. Characters without a victory strip just stay
+          // in idle (the parent fires this for the winner regardless).
+          if (sprites.victory) {
+            const finished = new Promise<void>((r) => (stripDone.current = r));
+            show(sprites.victory);
+            await finished; // strip plays once
+            if (!alive) return;
+          }
+          show(sprites.idle);
+          return done();
         }
       }
     })();
