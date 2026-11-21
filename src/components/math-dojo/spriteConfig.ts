@@ -13,7 +13,7 @@ export interface StripConfig {
 }
 
 export type CharacterId = "alan" | "bayan" | "mateo" | "kash" | "luca";
-export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko" | "victory" | "walk";
+export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko" | "victory";
 
 const FRAME = { frames: 6, frameWidth: 326, frameHeight: 348 } as const;
 const strip = (src: string, fps: number, loop: boolean, frames: number = FRAME.frames): StripConfig => ({ src, fps, loop, frames, frameWidth: FRAME.frameWidth, frameHeight: FRAME.frameHeight });
@@ -31,9 +31,6 @@ export interface CharacterSprites {
   ko?: StripConfig; // drop-in slot: alan-ko.png / bayan-ko.png
   /** Optional victory celebration: plays once for the battle winner. */
   victory?: StripConfig;
-  /** Optional walk cycle (looping): the fighter walks toward the opponent
-   *  for melee strikes (jab/kick), then walks back. Ranged heavies don't walk. */
-  walk?: StripConfig;
 }
 
 export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
@@ -55,10 +52,6 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     ko: strip("/sprites/alan-ko-v1.png", 12, false, 28),
     // Nov 21 2026: victory celebration — big smile, arms raised, small hop.
     victory: strip("/sprites/alan-victory-v1.png", 12, false, 12),
-    // Nov 21 2026: walk cycle — walks to the opponent for melee (jab/kick).
-    // Alan's video zoomed (tiny <-> full-size); only the full-size run
-    // f11-f20 is usable, 10f. Wraparound 8.4 (mean 7.4) — seamless.
-    walk: strip("/sprites/alan-walk-v1.png", 12, true, 10),
   },
   bayan: {
     idle: strip("/sprites/bayan-idle-v7.png", 12, true, 12),
@@ -74,9 +67,6 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     ko: strip("/sprites/bayan-ko-v1.png", 12, false, 28),
     // Nov 21 2026: victory — crouch, jump with arms raised, big smile, land.
     victory: strip("/sprites/bayan-victory-v1.png", 12, false, 12),
-    // Nov 21 2026: walk cycle — walks to the opponent for melee (jab/kick).
-    // Best 12f window f11-f22 (wraparound 16.6 vs mean 11.0).
-    walk: strip("/sprites/bayan-walk-v1.png", 12, true, 12),
   },
   /** Mateo (Alan's friend, Nov 20 2026): same strikes as Alan for now —
    * jab / kick / booger (monster) / block. v8: v7 body + v5 face +
@@ -104,9 +94,6 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     ko: strip("/sprites/mateo-ko-v2.png", 12, false, 28),
     // Nov 21 2026: victory — jump with arms raised, big smile, land.
     victory: strip("/sprites/mateo-victory-v1.png", 12, false, 12),
-    // Nov 21 2026: walk cycle — walks to the opponent for melee (jab/kick).
-    // Best 12f window f10-f21 (wraparound 21.9 vs mean 17.6 — brisk jog-like walk).
-    walk: strip("/sprites/mateo-walk-v1.png", 12, true, 12),
   },
   /** Kash (Alan's friend, Nov 20 2026): same scheme as Mateo — Alan's
    * body with Kash's face and clothes. Short light-brown hair, dark
@@ -139,9 +126,6 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     // Nov 21 2026: victory — arms raised, big smile. (The video opens
     // with a punch — frames f5/f8 are NOT in the strip.)
     victory: strip("/sprites/kash-victory-v1.png", 12, false, 12),
-    // Nov 21 2026: walk cycle — walks to the opponent for melee (jab/kick).
-    // Best 12f window f10-f21 (wraparound 5.1 vs mean 9.9 — seamless).
-    walk: strip("/sprites/kash-walk-v1.png", 12, true, 12),
   },
   /** Luca (Kash's brother, Nov 20 2026): Bayan's body/height/limbs —
    * built on Bayan's idle strip, NOT scaled 0.80 (stays ~320px tall
@@ -172,9 +156,6 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     ko: strip("/sprites/luca-ko-v2.png", 12, false, 28),
     // Nov 21 2026: victory — jump with arms raised, big smile, cap stays on.
     victory: strip("/sprites/luca-victory-v1.png", 12, false, 12),
-    // Nov 21 2026: walk cycle — walks to the opponent for melee (jab/kick).
-    // Best 12f window f09-f20 (wraparound 12.2 vs mean 11.3 — seamless).
-    walk: strip("/sprites/luca-walk-v1.png", 12, true, 12),
   },
 };
 

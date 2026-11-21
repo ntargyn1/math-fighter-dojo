@@ -7,24 +7,24 @@ import { CHARACTERS, type CharacterId, type StripConfig } from "./spriteConfig";
  * Procedural motion (lunge, hitstop, knockback, KO fall) runs on the container;
  * the sprite strip inside plays frames with CSS steps(). Only the sprite element is mirrored.
  */
-export type FighterState = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko" | "victory" | "walk";
+export type FighterState = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko" | "victory";
 export type AttackMove = "jab" | "kick" | "booger";
 export type Facing = "left" | "right";
 
 export const HITSTOP_MS = 100;
 export const LUNGE_MS = 120; // time from attack start until impact
-// Melee walk-up (Nov 21 2026): for jab/kick the fighter walks to the
-// opponent first (walk strip looping, container moves), strikes, then
-// walks back. Ranged heavies (booger/cat/hammer/reaper) don't walk —
-// their effect travels on its own. WALK_IN_MS must match the impact
-// timing in useFightFx.strike (impact = WALK_IN_MS + LUNGE_MS).
-export const WALK_DIST = 130; // px toward the opponent
-export const WALK_IN_MS = 450; // walk-in duration (also the walk-back)
+// Melee dash (Nov 21 2026): for jab/kick the fighter DASHES to the
+// opponent (a quick burst, not a walk — Nurlan's choice), strikes, then
+// dashes back. Ranged heavies (booger/cat/hammer/reaper) don't dash —
+// their effect travels on its own. DASH_MS must match the impact timing
+// in useFightFx.strike (impact = DASH_MS + LUNGE_MS).
+export const DASH_DIST = 130; // px toward the opponent
+export const DASH_MS = 180; // dash-in duration (also the dash-back)
 // The shark (Alan's jab) is ~256px wide and its bite lunges forward in
-// the strip itself — walking the full 130px puts half the shark BEHIND
-// the opponent. It only needs a short approach.
-const walkDistFor = (character: CharacterId, state: "jab" | "kick") =>
-  character === "alan" && state === "jab" ? 60 : WALK_DIST;
+// the strip itself — dashing the full 130px puts half the shark BEHIND
+// the opponent. It only needs a short dash.
+const dashDistFor = (character: CharacterId, state: "jab" | "kick") =>
+  character === "alan" && state === "jab" ? 60 : DASH_DIST;
 const BLOCK_HOLD_MS = 600;
 
 // Preloaded strip images are held here for the app's lifetime: without a
@@ -128,39 +128,32 @@ export function Fighter({
         }
         case "jab":
         case "kick": {
-          // Melee (Nov 21 2026): walk up to the opponent first (walk strip
-          // looping while the container moves), strike, then walk back.
-          // The impact lands at WALK_IN_MS + LUNGE_MS — useFightFx times
-          // the defender's reaction to that (see strike()).
-          const walkDist = walkDistFor(character, state);
-          if (sprites.walk) {
-            show(sprites.walk);
-            await controls.start({ x: walkDist * d, transition: { duration: WALK_IN_MS / 1000, ease: "easeInOut" } });
-            if (!alive) return;
-          }
+          // Melee dash (Nov 21 2026): a quick burst to the opponent
+          // (idle strip, container slides fast with a slight forward
+          // lean), strike, then dash back. The impact lands at
+          // DASH_MS + LUNGE_MS — useFightFx times the defender's
+          // reaction to that (see strike()).
+          const dashDist = dashDistFor(character, state);
+          show(sprites.idle);
+          await controls.start({ x: dashDist * d, rotate: 4 * d, scaleY: 0.96, transition: { duration: DASH_MS / 1000, ease: "easeIn" } });
+          if (!alive) return;
           const finished = new Promise<void>((r) => (stripDone.current = r));
           show(sprites[state]);
-          // Small lunge from the walked-up position (jab 52px, Alan kick
-          // 32px, Bayan jump kick 40px), with a small y-bob so the step
-          // reads as walking, not sliding.
+          // Small lunge from the dashed-in position (jab 52px, Alan kick
+          // 32px, Bayan jump kick 40px), with a small y-bob.
           const dist = state === "kick" ? (character === "bayan" ? 40 : 32) : 52;
           const lungeMs = state === "kick" && character === "bayan" ? 450 : LUNGE_MS;
-          await controls.start({ x: (walkDist + dist) * d, y: [0, -5, 0], transition: { duration: lungeMs / 1000, ease: "easeIn" } });
+          await controls.start({ x: (dashDist + dist) * d, y: [0, -5, 0], rotate: 0, scaleY: 1, transition: { duration: lungeMs / 1000, ease: "easeIn" } });
           if (!alive) return;
           await freeze();
           if (!alive) return;
-          // Wait for the strike strip to finish before walking back — the
-          // `finished` promise belongs to the strike strip, and swapping
-          // to the looping walk strip first would leave it hanging.
+          // Wait for the strike strip to finish before dashing back —
+          // the `finished` promise belongs to the strike strip.
           await finished;
           if (!alive) return;
-          if (sprites.walk) {
-            show(sprites.walk);
-            await controls.start({ x: 0, y: 0, transition: { duration: WALK_IN_MS / 1000, ease: "easeInOut" } });
-            if (!alive) return;
-          } else {
-            await controls.start({ x: 0, y: 0, transition: { duration: 0.15, ease: "easeOut" } });
-          }
+          show(sprites.idle);
+          await controls.start({ x: 0, y: 0, rotate: 0, scaleY: 1, transition: { duration: DASH_MS / 1000, ease: "easeOut" } });
+          if (!alive) return;
           show(sprites.idle);
           return done();
         }
