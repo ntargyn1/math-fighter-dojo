@@ -55,13 +55,15 @@ const PUNCHES: Record<
 };
 
 /** Heavy is per-fighter: Alan's and Mateo's monster booger, Bayan's cat
- * scratch, Kash's Roblox sledgehammer. */
+ * scratch, Kash's Roblox sledgehammer, Luca's Grim Reaper scythe. */
 const heavyFor = (c: CharacterId) =>
   c === "bayan"
     ? { label: "Cat Scratch", emoji: "🐱" }
     : c === "kash"
       ? { label: "Roblox Hammer", emoji: "🔨" }
-      : { label: "Booger Attack", emoji: "🤢" };
+      : c === "luca"
+        ? { label: "Grim Reaper", emoji: "💀" }
+        : { label: "Booger Attack", emoji: "🤢" };
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -195,6 +197,7 @@ function playUltimateAnimation() {
 const ALAN_BOOGER_IMPACT_MS = 2000;
 const BAYAN_CAT_IMPACT_MS = 1400;
 const KASH_ROBLOX_IMPACT_MS = 1900; // Kash's hammer hits the ground on strip frame ~23 (28f @ 12fps, v4).
+const LUCA_REAPER_IMPACT_MS = 1450; // Luca's scythe reaches its lowest sweep on strip frame ~17 (28f @ 12fps, v1).
 
 // ---------- Fight FX (framer-motion) ----------
 
@@ -318,17 +321,17 @@ function useFightFx() {
   // Side mapping in the arena: "bottom" = LEFT fighter, "top" = RIGHT fighter.
   // effect: which visible hit mark the heavy leaves on the defender —
   // "slime" for Alan's monster booger, "scratch" for Bayan's cat, "hammer"
-  // for Kash's Roblox sledgehammer, "none" for the boss (an emoji, it has
-  // no monster or cat).
-  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit", effect: "slime" | "scratch" | "hammer" | "none" = "none") => {
+  // for Kash's Roblox sledgehammer, "scythe" for Luca's Grim Reaper,
+  // "none" for the boss (an emoji, it has no monster or cat).
+  const strike = async (attacker: Side, text: string, shake: boolean, move: AttackMove = "jab", reaction: "hit" | "block" = "hit", effect: "slime" | "scratch" | "hammer" | "scythe" | "none" = "none") => {
     const defender: Side = attacker === "top" ? "bottom" : "top";
     // The heavy's contact frame differs per fighter (Alan's monster slaps
     // at ~2.0s, Bayan's cat starts scratching at ~1.33s, Kash's hammer
-    // slams at ~1.65s), so the hit feedback waits for the attacker's
-    // contact — not for LUNGE_MS (when the monster/cat/hammer isn't there
-    // yet) and not for a shared guess. The boss has no monster or cat
-    // (effect "none"), so its counter is a plain lunge and the feedback
-    // fires at LUNGE_MS.
+    // slams at ~1.9s, Luca's scythe sweeps lowest at ~1.45s), so the hit
+    // feedback waits for the attacker's contact — not for LUNGE_MS (when
+    // the monster/cat/hammer/scythe isn't there yet) and not for a shared
+    // guess. The boss has no monster or cat (effect "none"), so its
+    // counter is a plain lunge and the feedback fires at LUNGE_MS.
     const impactMs =
       move === "booger"
         ? effect === "slime"
@@ -337,7 +340,9 @@ function useFightFx() {
             ? BAYAN_CAT_IMPACT_MS
             : effect === "hammer"
               ? KASH_ROBLOX_IMPACT_MS
-              : LUNGE_MS
+              : effect === "scythe"
+                ? LUCA_REAPER_IMPACT_MS
+                : LUNGE_MS
         : LUNGE_MS;
     const atk = play(attacker, move);
     // Alan's Booger Attack: the monster runs on its own now (it is no
@@ -1219,16 +1224,19 @@ function LevelSlider({ label, value, onChange, accent }: { label: string; value:
   );
 }
 
-const CHARACTER_NAMES: Record<CharacterId, string> = { alan: "Alan", bayan: "Bayan", mateo: "Mateo", kash: "Kash" };
+const CHARACTER_NAMES: Record<CharacterId, string> = { alan: "Alan", bayan: "Bayan", mateo: "Mateo", kash: "Kash", luca: "Luca" };
 
 /** Theme follows the FIGHTER, not the player slot: Bayan (girl) is pink,
  * Alan and Mateo (boys) are blue — so Mateo is never pink. Kash is orange
- * (Halloween 🎃, matches his shirt) so he reads apart from Alan/Mateo. */
+ * (Halloween 🎃, matches his shirt) so he reads apart from Alan/Mateo.
+ * Luca is purple (Grim Reaper 💀, matches his purple transformation glow)
+ * so he reads apart from everyone. */
 const CHARACTER_THEME: Record<CharacterId, { color: string; emoji: string }> = {
   alan: { color: "#0ea5e9", emoji: "🌊" },
   bayan: { color: "#ec4899", emoji: "🌸" },
   mateo: { color: "#0ea5e9", emoji: "🌊" },
   kash: { color: "#f97316", emoji: "🎃" },
+  luca: { color: "#7c3aed", emoji: "💀" },
 };
 
 /** Two-player fighter pick: three buttons, the selected one highlighted. */
@@ -1312,7 +1320,7 @@ function TwoPlayerBattleScreen({
     const next = { ...health };
     // Heavy effect is per-fighter: Bayan's cat scratch, Kash's Roblox
     // hammer, everyone else's booger monster.
-    const effectFor = (c: CharacterId) => (c === "bayan" ? "scratch" : c === "kash" ? "hammer" : "slime");
+    const effectFor = (c: CharacterId) => (c === "bayan" ? "scratch" : c === "kash" ? "hammer" : c === "luca" ? "scythe" : "slime");
     const atkEffect = effectFor(chars[attacker]);
     const defEffect = effectFor(chars[defender]);
     if (r.hit) {
@@ -1379,7 +1387,7 @@ function TwoPlayerBattleScreen({
   const zone = (p: PlayerId) => {
     const active = turn === p;
     const label = p === "player1" ? "Player 1" : "Player 2";
-    const tint = chars[p] === "bayan" ? "border-pink-500 bg-pink-50" : chars[p] === "kash" ? "border-orange-500 bg-orange-50" : "border-sky-500 bg-sky-50";
+    const tint = chars[p] === "bayan" ? "border-pink-500 bg-pink-50" : chars[p] === "kash" ? "border-orange-500 bg-orange-50" : chars[p] === "luca" ? "border-violet-500 bg-violet-50" : "border-sky-500 bg-sky-50";
     if (!active) {
       return (
         <div className="rounded-2xl border-2 border-dashed border-foreground/15 px-3 py-2 text-center text-sm font-bold text-foreground/50">

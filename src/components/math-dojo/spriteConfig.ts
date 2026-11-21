@@ -12,7 +12,7 @@ export interface StripConfig {
   loop: boolean;
 }
 
-export type CharacterId = "alan" | "bayan" | "mateo" | "kash";
+export type CharacterId = "alan" | "bayan" | "mateo" | "kash" | "luca";
 export type SpriteAnim = "idle" | "intro" | "jab" | "kick" | "booger" | "block" | "hit" | "ko";
 
 const FRAME = { frames: 6, frameWidth: 326, frameHeight: 348 } as const;
@@ -88,6 +88,20 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     kick: strip("/sprites/kash-kick-v1.png", 12, false, 12),
     booger: strip("/sprites/kash-roblox-v4.png", 12, false, 28),
     block: strip("/sprites/kash-block-v1.png", 20, true, 12),
+  },
+  /** Luca (Kash's brother, Nov 20 2026): Bayan's body/height/limbs —
+   * built on Bayan's idle strip, NOT scaled 0.80 (stays ~320px tall
+   * like Bayan). Black cap, glasses, grey t-shirt, black shorts with
+   * red trim, black sneakers. Heavy is NOT a booger: the "booger" slot
+   * holds the Grim Reaper scythe strip (28f) — Luca glows purple,
+   * transforms into the Grim Reaper (black hooded robe, scythe),
+   * swings the scythe down. No intro strip yet. */
+  luca: {
+    idle: strip("/sprites/luca-idle-v1.png", 12, true, 12),
+    jab: strip("/sprites/luca-jab-v1.png", 28, false, 12),
+    kick: strip("/sprites/luca-kick-v1.png", 12, false, 12),
+    booger: strip("/sprites/luca-reaper-v1.png", 12, false, 28),
+    block: strip("/sprites/luca-block-v1.png", 20, true, 12),
   },
 };
 
