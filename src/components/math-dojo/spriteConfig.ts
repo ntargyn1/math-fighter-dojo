@@ -78,12 +78,15 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
    * rebuilt again — only frames 1-4, the single outlier frame
    * removed; now as steady as Alan. Heavy v3 (Nov 20): hammer
    * draw/raise/slam slowed down — 6 frames each (was 4), ending
-   * guard cut to 4; impact ~1.8s. */
+   * guard cut to 4; impact ~1.8s. Heavy v4 (Nov 20): REAL down-swing
+   * — the v3 slam frames were just blurred wind-up, no hit; new
+   * video generated of the hammer actually slamming down with a
+   * dust impact; impact ~1.9s. */
   kash: {
     idle: strip("/sprites/kash-idle-v3.png", 12, true, 12),
     jab: strip("/sprites/kash-jab-v1.png", 28, false, 12),
     kick: strip("/sprites/kash-kick-v1.png", 12, false, 12),
-    booger: strip("/sprites/kash-roblox-v3.png", 12, false, 28),
+    booger: strip("/sprites/kash-roblox-v4.png", 12, false, 28),
     block: strip("/sprites/kash-block-v1.png", 20, true, 12),
   },
 };
