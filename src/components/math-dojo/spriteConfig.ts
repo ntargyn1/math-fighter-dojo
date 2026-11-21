@@ -41,7 +41,7 @@ export const CHARACTERS: Record<CharacterId, CharacterSprites> = {
     block: strip("/sprites/alan-block-v4.png", 20, true, 12),
   },
   bayan: {
-    idle: strip("/sprites/bayan-idle-v6.png", 12, true, 12),
+    idle: strip("/sprites/bayan-idle-v7.png", 12, true, 12),
     intro: strip("/sprites/bayan-intro-v1.png", 10, false, 14),
     jab: strip("/sprites/bayan-jab-v6.png", 28, false, 12),
     kick: strip("/sprites/bayan-jumpkick-v1.png", 12, false, 12),
