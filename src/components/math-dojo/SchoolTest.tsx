@@ -6,11 +6,12 @@ import { WritingPad } from "./WritingPad";
  * School Test — practice problems in the same format as the Grade 2 Unit 2
  * Mid-Unit Assessment: same problem types, same paper look (numbered
  * problems, "Show your work.", "Solution ___"), new numbers every test.
- * Twelve problems: the first seven are this week's Lesson 9 kinds
+ * Fourteen problems: the first nine are this week's Lesson 9 kinds
  * (how-many-more, yes-or-no, start-unknown, two-step, model check, the
- * fluency-sheet missing-part kind, and choose-the-equations), plus five
- * last week's Unit 2 assessment kinds (decompose, sum, Tyler check, number
- * line, strategy). The two-step problem now covers all five forms from
+ * fluency-sheet missing-part kind, choose-the-equations, "fewer / less
+ * than", and explain-how), plus five last week's Unit 2 assessment kinds
+ * (decompose, sum, Tyler check, number line, strategy). The two-step
+ * problem now covers all five forms from
  * the Lesson 9 workbook and quiz (take away twice, add then take away,
  * take away then add, "fewer" then total, add two parts then compare) —
  * the Nov 18 quiz showed Alan stopping after step 1 and grabbing the
@@ -81,7 +82,18 @@ type SchoolProblem =
   /** "Ways to Model Word Problems" fluency sheet (Nov 11 homework): one of
    * six contexts, new numbers every test. The answer is always
    * whole − known — the story just changes which part is missing. */
-  | { kind: "word-missing"; ctx: "blocks" | "chairs" | "buttons" | "boxes" | "pages" | "tents"; whole: number; known: number };
+  | { kind: "word-missing"; ctx: "blocks" | "chairs" | "buttons" | "boxes" | "pages" | "tents"; whole: number; known: number }
+  /** "Fewer / less than" (Nov 23 school work, Lesson 9 Sessions 5–6):
+   * Liz/Tia jumps ("17 fewer"), the beagle/pug ("8 pounds less"), Keesha/
+   * John's test scores ("13 points less"). One step: a − b. The word
+   * "fewer" or "less" means subtract — the trap is adding. */
+  | { kind: "fewer"; ctx: "jumps" | "pounds" | "points"; name: string; name2: string; a: number; b: number }
+  /** Explain how (Nov 23 school work, Lesson 9 Session 5): "Ramin chose B
+   * as the correct answer. How did Ramin get his answer?" Alan's weak
+   * spot is explaining — he computes but doesn't write the conclusion.
+   * The child picks the explanation; the answer is stored as the chosen
+   * option index in a "number" AnswerState. */
+  | { kind: "explain"; solver: string; a: number; b: number; options: string[]; correct: number };
 
 type AnswerState =
   | { kind: "decompose"; selected: number[] }
@@ -355,6 +367,57 @@ function genWordMissing(): SchoolProblem {
   }
 }
 
+/** "Fewer / less than" (Nov 23 school work): one step, a − b. The three
+ * school contexts — jumps ("fewer"), dog weights ("pounds less"), test
+ * scores ("points less"). Regrouping is preferred, like on the sheet. */
+function genFewer(): SchoolProblem {
+  const ctx = pick(["jumps", "pounds", "points"] as const);
+  const n1 = kid();
+  let n2 = kid();
+  while (n2 === n1) n2 = kid();
+  if (ctx === "jumps") {
+    for (;;) {
+      const a = ri(31, 68);
+      const b = ri(11, 29);
+      if (a - b >= 10 && (ones(a) < ones(b) || Math.random() < 0.25))
+        return { kind: "fewer", ctx, name: n1, name2: n2, a, b };
+    }
+  }
+  if (ctx === "pounds") {
+    for (;;) {
+      const a = ri(21, 45);
+      const b = ri(5, 16);
+      if (a - b >= 10) return { kind: "fewer", ctx, name: n1, name2: n2, a, b };
+    }
+  }
+  for (;;) {
+    const a = ri(61, 99);
+    const b = ri(11, 25);
+    if (a - b >= 40) return { kind: "fewer", ctx, name: n1, name2: n2, a, b };
+  }
+}
+
+/** Explain how (Nov 23 school work): the solver got the right answer for
+ * a − b — how? The correct explanation is "He subtracted b from a"; the
+ * traps are adding, adding the answer, and subtracting backwards. */
+function genExplain(): SchoolProblem {
+  for (;;) {
+    const a = ri(31, 95);
+    const b = ri(11, 29);
+    const answer = a - b;
+    if (answer < 10 || answer > 90) continue;
+    if (!(ones(a) < ones(b) || Math.random() < 0.25)) continue;
+    const solver = pick(["Ramin", "Tyler", "Mia", "Leo", "Emma", "Noah"] as const);
+    const options = shuffle([
+      `He subtracted ${b} from ${a}.`,
+      `He added ${a} + ${b}.`,
+      `He added ${a} + ${answer}.`,
+      `He subtracted ${a} from ${b}.`,
+    ]);
+    return { kind: "explain", solver, a, b, options, correct: options.indexOf(`He subtracted ${b} from ${a}.`) };
+  }
+}
+
 function genTest(): SchoolProblem[] {
   return [
     // This week — Lesson 9 (two-digit word problems).
@@ -365,6 +428,8 @@ function genTest(): SchoolProblem[] {
     genChooseEquations(),
     genModelCheck(),
     genWordMissing(),
+    genFewer(),
+    genExplain(),
     // Last week — Unit 2 assessment.
     genDecompose(),
     genSumWork(),
@@ -501,6 +566,23 @@ function grade(p: SchoolProblem, ans: AnswerState): { correct: boolean; feedback
       return ok
         ? { correct: true, feedback: `Correct! The missing part is ${p.whole} − ${p.known} = ${answer}.` }
         : { correct: false, feedback: `The whole is ${p.whole} and one part is ${p.known}. The missing part is ${p.whole} − ${p.known} = ${answer} — do not add the two numbers.` };
+    }
+    case "fewer": {
+      if (ans.kind !== "number") return { correct: false, feedback: "" };
+      const answer = p.a - p.b;
+      const ok = Number(ans.value) === answer;
+      const word = p.ctx === "pounds" ? "less" : "fewer";
+      return ok
+        ? { correct: true, feedback: `Correct! "${word}" means take away: ${p.a} − ${p.b} = ${answer}.` }
+        : { correct: false, feedback: `"${word}" means take away, not add: ${p.a} − ${p.b} = ${answer}. Do not add ${p.a} + ${p.b}.` };
+    }
+    case "explain": {
+      if (ans.kind !== "number" || ans.value === "") return { correct: false, feedback: "" };
+      const answer = p.a - p.b;
+      const ok = Number(ans.value) === p.correct;
+      return ok
+        ? { correct: true, feedback: `Right! ${p.solver} subtracted: ${p.a} − ${p.b} = ${answer}.` }
+        : { correct: false, feedback: `${p.solver} subtracted to get ${answer}: ${p.a} − ${p.b} = ${answer}. Adding ${p.a} + ${p.b} gives ${p.a + p.b}, not ${answer}.` };
     }
   }
 }
@@ -665,6 +747,23 @@ function hints(p: SchoolProblem): string[] {
         `${p.whole} − ${p.known} = ${answer}. Check: ${p.known} + ${answer} = ${p.whole}.`,
       ];
     }
+    case "fewer": {
+      const answer = p.a - p.b;
+      const word = p.ctx === "pounds" ? "less" : "fewer";
+      return [
+        `"${word}" means take away, not add.`,
+        `Write it as ${p.a} − ${p.b} = ?`,
+        `${p.a} − ${p.b} = ${answer}. Check: ${answer} + ${p.b} = ${p.a}.`,
+      ];
+    }
+    case "explain": {
+      const answer = p.a - p.b;
+      return [
+        `What did ${p.solver} do with ${p.a} and ${p.b} to get ${answer}?`,
+        `The answer is ${p.a} − ${p.b} = ${answer}. Which choice says that?`,
+        `${p.solver} subtracted: ${p.a} − ${p.b} = ${answer}.`,
+      ];
+    }
   }
 }
 
@@ -786,6 +885,10 @@ function model(p: SchoolProblem): ReactNode {
       return <PartWholeModel whole={String(p.total)} part1={String(p.part)} part2="?" />;
     case "word-missing":
       return <ColumnMath rows={[p.whole, p.known]} op="−" />;
+    case "fewer":
+      return <ColumnMath rows={[p.a, p.b]} op="−" />;
+    case "explain":
+      return <ColumnMath rows={[p.a, p.b]} op="−" />;
   }
 }
 
@@ -1171,6 +1274,67 @@ function ProblemView({
         </div>
       );
     }
+    case "fewer": {
+      const story =
+        problem.ctx === "jumps"
+          ? `${problem.name} makes ${problem.a} jumps with a jump rope. ${problem.name2} makes ${problem.b} fewer jumps. How many jumps does ${problem.name2} make?`
+          : problem.ctx === "pounds"
+            ? `A beagle weighs ${problem.a} pounds. A pug weighs ${problem.b} pounds less than the beagle. How many pounds does the pug weigh?`
+            : `${problem.name}'s math test score is ${problem.a}. ${problem.name2}'s score is ${problem.b} points less than ${problem.name}'s score. What is ${problem.name2}'s score?`;
+      return (
+        <div>
+          <p className="text-lg leading-snug text-foreground">
+            <NumBadge n={n} />
+            {story} Show your work.
+          </p>
+          <div className="mt-3">
+            <WritingPad label="Show your work." />
+          </div>
+          <AnswerLine value={numVal} onChange={num} />
+        </div>
+      );
+    }
+    case "explain": {
+      const letters = ["A", "B", "C", "D"];
+      const chosen = numVal === "" ? null : Number(numVal);
+      const answer = problem.a - problem.b;
+      return (
+        <div>
+          <p className="text-lg leading-snug text-foreground">
+            <NumBadge n={n} />
+            {problem.solver} solved {problem.a} − {problem.b} and got the right answer, {answer}. How did {problem.solver} get the answer? Choose
+            the best explanation.
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {problem.options.map((text, i) => {
+              const on = chosen === i;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => num(String(i))}
+                  className={`flex items-center gap-3 rounded-xl border-2 px-3 py-2 text-left text-xl font-bold transition-transform active:scale-95 ${
+                    on ? "border-[var(--dojo-primary)] bg-[var(--dojo-primary)]/10" : "border-foreground/20 bg-white"
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-base font-black ${
+                      on ? "border-[var(--dojo-primary)] bg-[var(--dojo-primary)] text-white" : "border-foreground/40 text-foreground"
+                    }`}
+                  >
+                    {letters[i]}
+                  </span>
+                  <span className="text-foreground">{text}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3">
+            <WritingPad label="Explain — write it in your own words too." />
+          </div>
+        </div>
+      );
+    }
     case "word-mc": {
       const letters = ["A", "B", "C", "D"];
       const chosen = numVal === "" ? null : Number(numVal);
@@ -1388,6 +1552,8 @@ const KNOWN_KINDS = new Set([
   "choose-equations",
   "model-check",
   "word-missing",
+  "fewer",
+  "explain",
 ]);
 
 function loadSaved(): SavedTest | null {
@@ -1461,7 +1627,7 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
             <div key={i} className="flex items-center gap-3 border-b border-foreground/10 py-2 last:border-0">
               <span className="text-xl">{results[i] ? "✅" : "❌"}</span>
               <span className="text-base font-bold text-foreground">
-                Problem {i + 1} — {p.kind === "decompose" ? "Ways to add" : p.kind === "sum-work" ? "Sum" : p.kind === "tyler" ? "Check Tyler" : p.kind === "yesno" ? "Yes or No" : p.kind === "numberline" ? "Number line" : p.kind === "word-sub" ? "Word problem" : p.kind === "missing" ? "How many more" : p.kind === "word-mc" ? "Pages" : p.kind === "start-unknown" ? "Start unknown" : p.kind === "two-step" ? "Two steps" : p.kind === "choose-equations" ? "Equations" : p.kind === "model-check" ? "Model check" : p.kind === "word-missing" ? "Missing part" : "Strategy"}
+                Problem {i + 1} — {p.kind === "decompose" ? "Ways to add" : p.kind === "sum-work" ? "Sum" : p.kind === "tyler" ? "Check Tyler" : p.kind === "yesno" ? "Yes or No" : p.kind === "numberline" ? "Number line" : p.kind === "word-sub" ? "Word problem" : p.kind === "missing" ? "How many more" : p.kind === "word-mc" ? "Pages" : p.kind === "start-unknown" ? "Start unknown" : p.kind === "two-step" ? "Two steps" : p.kind === "choose-equations" ? "Equations" : p.kind === "model-check" ? "Model check" : p.kind === "word-missing" ? "Missing part" : p.kind === "fewer" ? "Fewer / less than" : p.kind === "explain" ? "Explain how" : "Strategy"}
               </span>
             </div>
           ))}
