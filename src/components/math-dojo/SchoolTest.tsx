@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BigButton } from "./MathFightingDojo";
-import { WritingPad } from "./WritingPad";
+import { WritingPad, MarginCanvas } from "./WritingPad";
 
 /**
  * School Test — practice problems in the same format as the Grade 2 Unit 2
@@ -1647,7 +1647,10 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
   const g = checked[idx] ? grade(problem, answer) : null;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full flex-col gap-3 bg-[var(--dojo-bg)] px-3 py-4 md:max-w-3xl lg:max-w-4xl">
+    <>
+      {/* Empty side margins are a drawing canvas too (wide screens only). */}
+      <MarginCanvas resetKey={idx} />
+      <div className="relative z-10 mx-auto flex min-h-screen w-full flex-col gap-3 bg-[var(--dojo-bg)] px-3 py-4 md:max-w-3xl lg:max-w-4xl">
       <div className="flex items-center justify-between px-1">
         <div>
           <h2 className="text-2xl font-black text-[var(--dojo-primary)]">Unit 2 Practice Test</h2>
@@ -1714,6 +1717,7 @@ export function SchoolTestScreen({ onHome }: { onHome: () => void }) {
       <button type="button" onClick={onHome} className="text-sm font-bold text-foreground/60 underline">
         Back to home
       </button>
-    </div>
+      </div>
+    </>
   );
 }

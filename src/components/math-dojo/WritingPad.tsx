@@ -175,3 +175,148 @@ export function WritingPad({ label, height = 360 }: { label?: string; height?: n
     </div>
   );
 }
+
+/**
+ * MarginCanvas — a full-screen drawing layer behind the School Test content
+ * (Nov 25 2026, Nurlan's request). On a wide screen (a landscape tablet) the
+ * problem card is centered and capped, leaving empty margins on both sides.
+ * This canvas fills the whole viewport behind the content, so the child can
+ * write in those empty side areas too — the card sits on top and stays fully
+ * interactive; only the exposed margins are drawable. A small floating
+ * toolbar (bottom-left) switches pen/eraser and clears. Wide screens only —
+ * on a phone there are no side margins. The drawing clears when the problem
+ * changes (resetKey = problem index). Like the pad, it is never graded.
+ */
+export function MarginCanvas({ resetKey }: { resetKey: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef(false);
+  const lastRef = useRef<{ x: number; y: number } | null>(null);
+  const [tool, setTool] = useState<"pen" | "eraser">("pen");
+  const toolRef = useRef(tool);
+  toolRef.current = tool;
+
+  // Size the backing store to the viewport; preserve the drawing on resize.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const off = document.createElement("canvas");
+      off.width = canvas.width;
+      off.height = canvas.height;
+      const offCtx = off.getContext("2d");
+      if (offCtx && canvas.width > 0 && canvas.height > 0) offCtx.drawImage(canvas, 0, 0);
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (off.width > 0 && off.height > 0) ctx.drawImage(off, 0, 0, w, h);
+    };
+    size();
+    window.addEventListener("resize", size);
+    return () => window.removeEventListener("resize", size);
+  }, []);
+
+  // A new problem starts with clean margins.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }, [resetKey]);
+
+  const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const strokeTo = (p: { x: number; y: number }) => {
+    const ctx = canvasRef.current!.getContext("2d");
+    const last = lastRef.current;
+    if (!ctx || !last) return;
+    const erasing = toolRef.current === "eraser";
+    ctx.save();
+    ctx.globalCompositeOperation = erasing ? "destination-out" : "source-over";
+    ctx.strokeStyle = erasing ? "#000000" : "#1e3a5f";
+    ctx.lineWidth = erasing ? 28 : 4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    const mx = (last.x + p.x) / 2;
+    const my = (last.y + p.y) / 2;
+    ctx.quadraticCurveTo(last.x, last.y, mx, my);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.restore();
+    lastRef.current = p;
+  };
+
+  const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    canvasRef.current!.setPointerCapture(e.pointerId);
+    drawingRef.current = true;
+    lastRef.current = pos(e);
+  };
+  const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+    e.preventDefault();
+    strokeTo(pos(e));
+  };
+  const onUp = () => {
+    drawingRef.current = false;
+    lastRef.current = null;
+  };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  return (
+    <>
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 z-0 hidden touch-none md:block"
+        style={{ background: "var(--dojo-bg)" }}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        onPointerLeave={onUp}
+      />
+      <div className="fixed bottom-3 left-3 z-20 hidden gap-2 md:flex">
+        <button
+          type="button"
+          onClick={() => setTool("pen")}
+          className={`rounded-full px-4 py-2 text-base font-black shadow ${
+            tool === "pen" ? "bg-[var(--dojo-primary)] text-white" : "bg-white/70 text-foreground/70"
+          }`}
+        >
+          ✏️ Pen
+        </button>
+        <button
+          type="button"
+          onClick={() => setTool("eraser")}
+          className={`rounded-full px-4 py-2 text-base font-black shadow ${
+            tool === "eraser" ? "bg-[var(--dojo-primary)] text-white" : "bg-white/70 text-foreground/70"
+          }`}
+        >
+          🧽 Eraser
+        </button>
+        <button
+          type="button"
+          onClick={clear}
+          className="rounded-full bg-white/70 px-4 py-2 text-base font-black text-foreground/70 shadow"
+        >
+          🗑 Clear
+        </button>
+      </div>
+    </>
+  );
+}
